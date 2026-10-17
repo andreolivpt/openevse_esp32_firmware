@@ -316,8 +316,8 @@ void Mqtt::subscribeTopics() {
   if (mqtt_vehicle_charge_limit != "") { _mqttclient.subscribe(mqtt_vehicle_charge_limit); yield(); }
   if (mqtt_home_battery_soc != "") { _mqttclient.subscribe(mqtt_home_battery_soc); yield(); }
   if (mqtt_home_battery_power != "") { _mqttclient.subscribe(mqtt_home_battery_power); yield(); }
-  // Shelly LNM provides the voltage feed when enabled
-  if (mqtt_vrms != "" && !shelly_lnm_enabled) { _mqttclient.subscribe(mqtt_vrms); yield(); }
+  // Shelly LNM or the Modbus meter provide the voltage feed when enabled
+  if (mqtt_vrms != "" && !shelly_lnm_enabled && !modbus_meter_enabled) { _mqttclient.subscribe(mqtt_vrms); yield(); }
 
   // Settable topics
   _mqttclient.subscribe(mqtt_topic + "/divertmode/set"); yield();
@@ -446,7 +446,7 @@ void Mqtt::handleMqttMessage(MongooseString topic, MongooseString payload) {
       shaper.setLivePwr(payload_str.toInt());
       DBUGF("shaper: Live Pwr:%dW", shaper.getLivePwr());
   }
-  else if (topic_string == mqtt_vrms && !shelly_lnm_enabled) {
+  else if (topic_string == mqtt_vrms && !shelly_lnm_enabled && !modbus_meter_enabled) {
     double volts = payload_str.toFloat();
     DBUGF("voltage:%.1f", volts);
     _evse->setMqttVoltage(volts);

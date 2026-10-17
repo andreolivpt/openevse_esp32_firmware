@@ -60,6 +60,7 @@ typedef const __FlashStringHelper *fstr_t;
 #include "web_auth.h"
 #include "web_auth_secret.h"
 #include "shelly_lnm.h"
+#include "modbus_meter.h"
 
 static MongooseHttpServer http_server;     // Create class for HTTP server
 static MongooseHttpServer https_server;    // Create class for HTTPS server
@@ -730,6 +731,17 @@ void buildStatus(JsonDocument &doc) {
   doc["shelly_lnm_data_age"] = shelly_lnm.getDataAge();
   doc["shelly_lnm_power"] = shelly_lnm.getPower();
   doc["shelly_lnm_voltage"] = shelly_lnm.getVoltage();
+  doc["modbus_meter_connected"] = modbus_meter.isConnected()?1:0;
+  doc["modbus_meter_active"] = modbus_meter.isActive()?1:0;
+  doc["modbus_meter_data_age"] = modbus_meter.getDataAge();
+  doc["modbus_meter_voltage"] = modbus_meter.getVoltage();
+  doc["modbus_meter_current"] = modbus_meter.getCurrent();
+  doc["modbus_meter_power"] = modbus_meter.getPower();
+  doc["modbus_meter_energy"] = modbus_meter.getEnergy();
+  doc["modbus_meter_errors"] = modbus_meter.getErrors();
+  if(modbus_meter.getLastError()) {
+    doc["modbus_meter_last_error"] = modbus_meter.getLastError();
+  }
   doc["service_level"] = static_cast<uint8_t>(evse.getActualServiceLevel());
   doc["limit"] = limit.hasLimit();
   doc["boost"] = boost.isActive();

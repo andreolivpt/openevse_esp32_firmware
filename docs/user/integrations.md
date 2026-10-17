@@ -61,6 +61,35 @@ The replaced MQTT topics are not subscribed to. Values are applied at most every
 
 **Security:** LNM messages are unauthenticated UDP multicast. Anyone on the local network can send packets that set the grid power and voltage seen by OpenEVSE, which is comparable to an unauthenticated MQTT broker. Use `shelly_lnm_device` to ignore other devices' messages, and only enable this on a trusted network.
 
+## Modbus TCP meter (CHINT DDSU666)
+
+A single phase CHINT DDSU666 meter on the charger circuit, reached through a Modbus TCP gateway (RS485 to Ethernet / WiFi), can provide the voltage and charging current. There is no UI page yet; set the options through the `/config` API, for example:
+
+```bash
+curl -X POST http://openevse.local/config -H 'Content-Type: application/json' \
+  -d '{"modbus_meter_enabled": true, "modbus_meter_host": "192.168.0.50", "modbus_meter_unit": 1}'
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `modbus_meter_enabled` | `false` | Read the meter |
+| `modbus_meter_host` | empty | IP address or host name of the Modbus TCP gateway |
+| `modbus_meter_port` | `502` | TCP port of the gateway |
+| `modbus_meter_unit` | `1` | Modbus address (unit id) of the meter on the RS485 bus |
+| `modbus_meter_interval` | `5` | Seconds between readings (1 to 30) |
+| `modbus_meter_timeout` | `90` | Seconds without a valid reading before falling back to the default behaviour (10 to 120, and never less than two polls) |
+
+The gateway must speak Modbus TCP (MBAP framing); gateways in transparent "RTU over TCP" mode are reported as `invalid response`. The meter is read with function 0x03: voltage, current and active power from 0x2000, imported energy from 0x4000.
+
+While readings are fresh:
+
+* the voltage replaces the MQTT voltage input (`mqtt_vrms` is not subscribed to); changes below 1 V are ignored;
+* the meter current replaces the OpenEVSE current sensor reading while charging, so the reported power and the session / total energy counters follow the meter.
+
+When no valid reading arrives for `modbus_meter_timeout` seconds, or the option is disabled, the configured voltage and the OpenEVSE current sensor are used again. Do not enable this together with Shelly LNM, both would feed the voltage.
+
+`/status` and the WebSocket / MQTT events report `modbus_meter_connected`, `modbus_meter_active` (meter values in use), `modbus_meter_data_age` (ms), `modbus_meter_voltage`, `modbus_meter_current`, `modbus_meter_power` (W), `modbus_meter_energy` (imported kWh, as counted by the meter), `modbus_meter_errors` and, after a failure, `modbus_meter_last_error`.
+
 ## Plain HTTP
 
 Everything MQTT can feed in, HTTP can too: POST JSON to the device's `/status`

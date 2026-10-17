@@ -356,6 +356,15 @@ class EvseManager : public MicroTasks::Task
     void setMqttVoltage(double volts) {
       _monitor.setMqttVoltage(volts);
     }
+    void clearMqttVoltage() {
+      _monitor.clearMqttVoltage();
+    }
+    void setExternalCurrent(double amps) {
+      _monitor.setExternalCurrent(amps);
+    }
+    void clearExternalCurrent() {
+      _monitor.clearExternalCurrent();
+    }
     uint32_t getSessionElapsed() {
       return _monitor.getSessionElapsed();
     }

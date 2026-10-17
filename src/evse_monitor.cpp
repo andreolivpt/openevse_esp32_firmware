@@ -163,6 +163,8 @@ EvseMonitor::EvseMonitor(OpenEVSEClass &openevse) :
   _voltage(VOLTAGE_DEFAULT),
   _mqtt_voltage(0),
   _mqtt_voltage_time(0),
+  _ext_amp(0),
+  _ext_amp_valid(false),
   _temps(),
   _gfci_count(0),
   _nognd_count(0),
@@ -774,6 +776,52 @@ void EvseMonitor::setMqttVoltage(double volts)
   }
 }
 
+void EvseMonitor::clearMqttVoltage()
+{
+  if(0 == _mqtt_voltage_time) {
+    return;
+  }
+
+  _mqtt_voltage_time = 0;
+  _mqtt_voltage = 0;
+  updateEffectiveVoltage();
+
+  // The controller still holds the last live voltage, give it back the
+  // resolved (configured / default) one
+  _openevse.setVoltage(_voltage, [](int) {});
+}
+
+void EvseMonitor::setExternalCurrent(double amps)
+{
+  if(amps < 0) {
+    return;
+  }
+
+  _ext_amp = amps;
+  _ext_amp_valid = true;
+
+  // Show the new value straight away instead of on the next RAPI poll
+  if(isCharging() && amps != _amp)
+  {
+    _amp = amps;
+    _power = _amp * _voltage;
+    if(config_threephase_enabled()) {
+      _power = _power * 3;
+    }
+
+    JsonDocument event;
+    event["amp"] = _amp * AMPS_SCALE_FACTOR;
+    event["power"] = _power * POWER_SCALE_FACTOR;
+    event_send(event);
+  }
+}
+
+void EvseMonitor::clearExternalCurrent()
+{
+  // The next RAPI poll brings back the OpenEVSE current sensor reading
+  _ext_amp_valid = false;
+}
+
 // Resolve the voltage we report/display, in priority order:
 //   1. live voltage received over MQTT (while still fresh)
 //   2. statically configured voltage from Settings > Charger ($SV/$GV)
@@ -1163,7 +1211,9 @@ void EvseMonitor::getChargeCurrentAndVoltageFromEvse()
       if(RAPI_RESPONSE_OK == ret)
       {
         DBUGF("amps = %.2f, volts = %.2f", a, volts);
-        _amp = a;
+        // An external meter on the charger circuit, when fresh, is more
+        // accurate than the controller's own current sensor
+        _amp = _ext_amp_valid ? _ext_amp : a;
         // _voltage is resolved from MQTT > configured ($SV/$GV) > default in
         // updateEffectiveVoltage(); the $GG charging voltage is intentionally
         // ignored so the reported value tracks the configured setpoint.

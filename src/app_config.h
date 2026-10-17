@@ -115,6 +115,14 @@ extern String shelly_lnm_power_field;
 extern String shelly_lnm_voltage_field;
 extern String shelly_lnm_device;
 
+// Modbus TCP meter settings (charger circuit voltage / current / energy)
+extern bool modbus_meter_enabled;
+extern String modbus_meter_host;
+extern uint16_t modbus_meter_port;
+extern uint16_t modbus_meter_unit;
+extern uint32_t modbus_meter_interval;
+extern uint32_t modbus_meter_timeout;
+
 // Scheduler settings
 extern uint32_t scheduler_start_window;
 

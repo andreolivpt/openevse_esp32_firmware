@@ -36,6 +36,7 @@
 
 #include "limit.h"
 #include "shelly_lnm.h"
+#include "modbus_meter.h"
 #endif
 
 #ifndef HTTP_SERVER_PORT
@@ -160,6 +161,14 @@ uint16_t shelly_lnm_port;
 String shelly_lnm_power_field;
 String shelly_lnm_voltage_field;
 String shelly_lnm_device;
+
+// Modbus TCP meter settings
+bool modbus_meter_enabled;
+String modbus_meter_host;
+uint16_t modbus_meter_port;
+uint16_t modbus_meter_unit;
+uint32_t modbus_meter_interval;
+uint32_t modbus_meter_timeout;
 
 // Current Shaper settings
 uint32_t current_shaper_max_pwr;
@@ -431,6 +440,14 @@ ConfigOpt *opts[] =
   new ConfigOptDefinition<String>(shelly_lnm_voltage_field, "voltage", "shelly_lnm_voltage_field", "slvf"),
   new ConfigOptDefinition<String>(shelly_lnm_device, "", "shelly_lnm_device", "sld"),
 
+// Modbus TCP meter settings
+  new ConfigOptDefinition<bool>(modbus_meter_enabled, false, "modbus_meter_enabled", "mme"),
+  new ConfigOptDefinition<String>(modbus_meter_host, "", "modbus_meter_host", "mmh"),
+  new ConfigOptDefinition<uint16_t>(modbus_meter_port, 502, "modbus_meter_port", "mmp"),
+  new ConfigOptDefinition<uint16_t>(modbus_meter_unit, 1, "modbus_meter_unit", "mmu"),
+  new ConfigOptDefinition<uint32_t>(modbus_meter_interval, 5, "modbus_meter_interval", "mmi"),
+  new ConfigOptDefinition<uint32_t>(modbus_meter_timeout, 90, "modbus_meter_timeout", "mmt"),
+
 // Current Shaper settings
   new ConfigOptDefinition<uint32_t>(current_shaper_max_pwr, 0, "current_shaper_max_pwr", "smp"),
   new ConfigOptDefinition<uint32_t>(current_shaper_smoothing_time, 60, "current_shaper_smoothing_time", "sst"),
@@ -660,6 +677,12 @@ void config_changed(String name)
   } else if(name.startsWith("shelly_lnm_")) {
     shelly_lnm.notifyConfigChanged();
     if(name == "shelly_lnm_enabled") {
+      mqtt.restartConnection();
+    }
+  } else if(name.startsWith("modbus_meter_")) {
+    modbus_meter.notifyConfigChanged();
+    if(name == "modbus_meter_enabled") {
+      // mqtt_vrms is not subscribed to while the meter provides the voltage
       mqtt.restartConnection();
     }
   } else if(name.startsWith("ocpp_")) {
