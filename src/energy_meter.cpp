@@ -11,6 +11,7 @@
 #include "debug.h"
 #include "app_config.h"
 #include "event.h"
+#include "modbus_meter_parser.h"
 
 EnergyMeterData::EnergyMeterData()
 {
@@ -135,7 +136,8 @@ void EnergyMeterData::deserialize(JsonDocument &doc)
 EnergyMeter::EnergyMeter() : _last_upd(0),
                              _write_upd(0),
                              _rotate_upd(0),
-                             _switch_state(0){};
+                             _switch_state(0),
+                             _ext_last_kwh(NAN){};
 
 EnergyMeter::~EnergyMeter()
 {
@@ -227,24 +229,39 @@ bool EnergyMeter::update()
   uint32_t curms = millis();
   uint32_t dms = curms - _last_upd;
 
+  // Cumulative import register of an external meter on the charger circuit,
+  // NAN when there is none (or its reading is not fresh)
+  double ext_kwh = _monitor->getExternalEnergy();
+
   if (_monitor->isCharging())
   {
     // increment elapsed time
     _data.elapsed += dms / 1000.0;
 
     DBUGLN("Energy Meter: Incrementing");
-    // accumulate data
-    double v = _monitor->getVoltage();
-    double a = _monitor->getAmps();
-    double mws = v * a * dms;
-    if (config_threephase_enabled())
-    {
-      // Multiply calculation by 3 to get 3-phase energy.
-      mws *= 3;
+    double wh = NAN;
+
+    // Prefer what the meter itself counted since the last update
+    double meter_wh;
+    if (modbus_meter_energy_delta(_ext_last_kwh, ext_kwh, dms, meter_wh)) {
+      wh = meter_wh;
     }
 
-    // convert to w/h
-    double wh = mws / 3600000;
+    if (isnan(wh))
+    {
+      // accumulate data
+      double v = _monitor->getVoltage();
+      double a = _monitor->getAmps();
+      double mws = v * a * dms;
+      if (config_threephase_enabled())
+      {
+        // Multiply calculation by 3 to get 3-phase energy.
+        mws *= 3;
+      }
+
+      // convert to w/h
+      wh = mws / 3600000;
+    }
     _data.session += wh;
     double kwh = wh / 1000;
     _data.total += kwh;
@@ -268,6 +285,10 @@ bool EnergyMeter::update()
       _event_upd = curms;
     }
   }
+
+  // Track the register also while idle, so standby consumption between
+  // sessions is never added to the next one. A gap (NAN) forces a resync.
+  _ext_last_kwh = ext_kwh;
 
   _last_upd = curms;
   DBUGF("session_wh = %.2f, total_kwh = %.2f", _data.session, _data.total);

@@ -84,7 +84,8 @@ The gateway must speak Modbus TCP (MBAP framing); gateways in transparent "RTU o
 While readings are fresh:
 
 * the voltage replaces the MQTT voltage input (`mqtt_vrms` is not subscribed to); changes below 1 V are ignored;
-* the meter current replaces the OpenEVSE current sensor reading while charging, so the reported power and the session / total energy counters follow the meter.
+* the meter current replaces the OpenEVSE current sensor reading while charging, so the reported power follows the meter;
+* the session / total (and daily, weekly, ...) energy counters add what the meter's import register counted while charging, instead of integrating voltage × current. A missed energy read, a register that goes backwards (meter reset or replaced) or an implausible jump falls back to voltage × current for that step and resyncs on the next good value. Energy counted by the meter while not charging (standby) is never added.
 
 When no valid reading arrives for `modbus_meter_timeout` seconds, or the option is disabled, the configured voltage and the OpenEVSE current sensor are used again. Do not enable this together with Shelly LNM, both would feed the voltage.
 

@@ -365,6 +365,12 @@ class EvseManager : public MicroTasks::Task
     void clearExternalCurrent() {
       _monitor.clearExternalCurrent();
     }
+    void setExternalEnergy(double kwh) {
+      _monitor.setExternalEnergy(kwh);
+    }
+    void clearExternalEnergy() {
+      _monitor.clearExternalEnergy();
+    }
     uint32_t getSessionElapsed() {
       return _monitor.getSessionElapsed();
     }

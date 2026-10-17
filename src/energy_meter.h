@@ -55,6 +55,7 @@ private:
   uint32_t _event_upd;
   uint32_t _rotate_upd;
   uint8_t _switch_state; // 0: Undefined, 1: Enabled, 2: Disabled
+  double _ext_last_kwh;  // last external meter register seen, NAN = none
 
   EvseMonitor *_monitor;
 

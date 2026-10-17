@@ -176,6 +176,7 @@ class EvseMonitor : public MicroTasks::Task
     uint32_t _mqtt_voltage_time;      // millis() of last MQTT voltage (0 = never)
     double _ext_amp;                  // Charging current from an external meter
     bool _ext_amp_valid;              // _ext_amp replaces the OpenEVSE current sensor
+    double _ext_energy;               // External meter import register (kWh), NAN = none
     double _power;                   // Calculated Power from _amp & _voltage & mono|threephase
     Temperature _temps[EVSE_MONITOR_TEMP_COUNT];
     EnergyMeter _energyMeter;
@@ -370,6 +371,17 @@ class EvseMonitor : public MicroTasks::Task
     // OpenEVSE current sensor until cleared
     void setExternalCurrent(double amps);
     void clearExternalCurrent();
+    // Cumulative import energy (kWh) of an external meter on the charger
+    // circuit; the energy counters follow its increments while set
+    void setExternalEnergy(double kwh) {
+      _ext_energy = kwh;
+    }
+    void clearExternalEnergy() {
+      _ext_energy = NAN;
+    }
+    double getExternalEnergy() {
+      return _ext_energy;
+    }
     void setServiceLevel(ServiceLevel level, std::function<void(int ret)> callback = NULL);
     void configureCurrentSensorScale(long scale, long offset, std::function<void(int ret)> callback = NULL);
     // Re-read the controller's settings flags ($GE), publish the change

@@ -38,6 +38,7 @@ ModbusMeterTask::ModbusMeterTask() :
   _current(NAN),
   _power(NAN),
   _energy(NAN),
+  _energyFresh(false),
   _lastUpdate(0),
   _active(false),
   _appliedVoltage(NAN),
@@ -121,6 +122,7 @@ void ModbusMeterTask::stop()
   _current = NAN;
   _power = NAN;
   _energy = NAN;
+  _energyFresh = false;
   _lastUpdate = 0;
 }
 
@@ -333,7 +335,8 @@ void ModbusMeterTask::completeReading(double energy)
   _voltage = _rdVoltage;
   _current = _rdCurrent;
   _power = _rdPower;
-  if(!isnan(energy) && !isinf(energy) && energy >= 0) {
+  _energyFresh = !isnan(energy) && !isinf(energy) && energy >= 0;
+  if(_energyFresh) {
     _energy = energy;
   }
 
@@ -383,6 +386,14 @@ void ModbusMeterTask::apply()
   evse.setMqttVoltage(_appliedVoltage);
   evse.setExternalCurrent(_current);
 
+  // A missed energy read leaves a gap: the energy counters fall back to V*I
+  // and resync on the next good register value instead of double counting
+  if(_energyFresh) {
+    evse.setExternalEnergy(_energy);
+  } else {
+    evse.clearExternalEnergy();
+  }
+
   if(!_active) {
     _active = true;
     DBUGLN("Modbus meter: meter values active");
@@ -397,6 +408,7 @@ void ModbusMeterTask::revert(const char *reason)
   _appliedVoltage = NAN;
 
   evse.clearExternalCurrent();
+  evse.clearExternalEnergy();
   evse.clearMqttVoltage();
 
   DBUGF("Modbus meter: %s, back to default voltage / current", reason);

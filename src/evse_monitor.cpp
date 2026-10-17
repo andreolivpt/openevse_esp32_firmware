@@ -165,6 +165,7 @@ EvseMonitor::EvseMonitor(OpenEVSEClass &openevse) :
   _mqtt_voltage_time(0),
   _ext_amp(0),
   _ext_amp_valid(false),
+  _ext_energy(NAN),
   _temps(),
   _gfci_count(0),
   _nognd_count(0),

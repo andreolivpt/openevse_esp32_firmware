@@ -95,6 +95,28 @@ ModbusParseResult modbus_tcp_parse_read(const uint8_t *buf, size_t len,
   return ModbusParseResult::Ok;
 }
 
+bool modbus_meter_energy_delta(double last_kwh, double now_kwh, uint32_t elapsed_ms, double &wh)
+{
+  // NaN compares false everywhere, reject it explicitly
+  if(last_kwh != last_kwh || now_kwh != now_kwh) {
+    return false;
+  }
+
+  double delta = (now_kwh - last_kwh) * 1000.0;
+  if(delta < 0) {
+    return false;
+  }
+
+  uint32_t window = elapsed_ms < 60000 ? 60000 : elapsed_ms;
+  double limit = 30000.0 * window / 3600000.0;
+  if(delta > limit) {
+    return false;
+  }
+
+  wh = delta;
+  return true;
+}
+
 float modbus_regs_to_float(const uint16_t *regs)
 {
   uint32_t raw = ((uint32_t)regs[0] << 16) | regs[1];

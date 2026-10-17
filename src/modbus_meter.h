@@ -74,6 +74,7 @@ class ModbusMeterTask : public MicroTasks::Task
     double _current;
     double _power;  // W
     double _energy; // kWh, imported
+    bool _energyFresh; // _energy was read in the last completed reading
     uint32_t _lastUpdate;
 
     // values currently applied to the EVSE

@@ -1,5 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
+#include <math.h>
 #include <string.h>
 #include <vector>
 #include "modbus_meter_parser.h"
@@ -123,4 +124,33 @@ TEST_CASE("bad frames") {
   auto fc = response(4, 1, { 1, 2 });
   fc[7] = 0x04;
   CHECK(modbus_tcp_parse_read(fc.data(), fc.size(), 4, 2, out, consumed, exc) == ModbusParseResult::BadFrame);
+}
+
+TEST_CASE("energy delta from the import register") {
+  double wh = -1;
+  // 10 Wh in 5 s (7.2 kW)
+  CHECK(modbus_meter_energy_delta(1234.56, 1234.57, 5000, wh));
+  CHECK(wh == doctest::Approx(10.0));
+
+  // No change
+  CHECK(modbus_meter_energy_delta(10.0, 10.0, 2000, wh));
+  CHECK(wh == doctest::Approx(0.0));
+
+  // A few polls of accumulated energy still fits the 60 s minimum window
+  CHECK(modbus_meter_energy_delta(100.0, 100.12, 1000, wh));
+  CHECK(wh == doctest::Approx(120.0));
+}
+
+TEST_CASE("energy delta rejects untrustworthy steps") {
+  double wh = -1;
+  // Meter reset / replaced
+  CHECK_FALSE(modbus_meter_energy_delta(1234.0, 3.0, 5000, wh));
+  // Absurd jump (wrong register, swapped meter)
+  CHECK_FALSE(modbus_meter_energy_delta(100.0, 101.0, 5000, wh));
+  // No previous value / gap
+  CHECK_FALSE(modbus_meter_energy_delta(NAN, 10.0, 5000, wh));
+  CHECK_FALSE(modbus_meter_energy_delta(10.0, NAN, 5000, wh));
+  CHECK(wh == -1); // untouched
+  // Long gap allows proportionally more: 1 h at 7 kW
+  CHECK(modbus_meter_energy_delta(100.0, 107.0, 3600000, wh));
 }

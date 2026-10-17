@@ -42,4 +42,10 @@ ModbusParseResult modbus_tcp_parse_read(const uint8_t *buf, size_t len,
 // layout used by CHINT DDSU666 / DTSU666 meters).
 float modbus_regs_to_float(const uint16_t *regs);
 
+// Energy added between two readings of a meter's cumulative import register.
+// Returns false (and leaves `wh` untouched) when the step cannot be trusted:
+// the register went backwards (meter reset / replaced) or jumped further than
+// a 30 kW load could explain over max(elapsed_ms, 60 s).
+bool modbus_meter_energy_delta(double last_kwh, double now_kwh, uint32_t elapsed_ms, double &wh);
+
 #endif // _MODBUS_METER_PARSER_H
