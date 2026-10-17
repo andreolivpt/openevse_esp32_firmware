@@ -63,7 +63,7 @@ The replaced MQTT topics are not subscribed to. Values are applied at most every
 
 ## Modbus TCP meter (CHINT DDSU666)
 
-A single phase CHINT DDSU666 meter on the charger circuit, reached through a Modbus TCP gateway (RS485 to Ethernet / WiFi), can provide the voltage and charging current. There is no UI page yet; set the options through the `/config` API, for example:
+A single phase CHINT DDSU666 meter on the charger circuit, reached through a Modbus TCP gateway (RS485 to Ethernet / WiFi), can provide the voltage and charging current. Configure it from **Settings → Connectivity → Modbus TCP meter** (`/settings/modbusmeter`), which also shows the connection state and the live readings, or through the `/config` API, for example:
 
 ```bash
 curl -X POST http://openevse.local/config -H 'Content-Type: application/json' \
