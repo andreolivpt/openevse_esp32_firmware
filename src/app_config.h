@@ -159,6 +159,7 @@ extern uint32_t current_shaper_max_pwr;
 extern uint32_t current_shaper_smoothing_time;
 extern uint32_t current_shaper_min_pause_time;
 extern uint32_t current_shaper_data_maxinterval;
+extern bool current_shaper_release_on_timeout;
 
 // Temperature Throttle settings
 extern uint32_t temp_throttle_setpoint;

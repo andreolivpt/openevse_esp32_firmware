@@ -96,6 +96,33 @@ unsigned long CurrentShaperTask::loop(MicroTasks::WakeReason reason) {
 				// Assistant) and as a frozen readout in the web UI.
 				publishShaperEvent();
 			}
+			else if ( current_shaper_release_on_timeout && !_loadshare_limit_active &&
+			          (!_updated || millis() - _timer > current_shaper_data_maxinterval * 1000) )
+			{
+				// Configured to stop shaping rather than pause when the live power
+				// feed goes quiet: drop the claim so the charger carries on as if
+				// the shaper were off, and start shaping again on the next update.
+				bool wentStale = _updated;
+				if (_updated)
+				{
+					DBUGF("shaper_live_pwr has not been updated in time, releasing the shaper claim");
+					_updated = false;
+					_smoothed_live_pwr = _live_pwr;
+					_pause_timer = 0;
+				}
+
+				bool released = false;
+				if (_evse->clientHasClaim(EvseClient_OpenEVSE_Shaper))
+				{
+					_evse->release(EvseClient_OpenEVSE_Shaper);
+					released = true;
+				}
+
+				if (wentStale || released)
+				{
+					publishShaperEvent();
+				}
+			}
 			else if ( !_updated || millis() - _timer > current_shaper_data_maxinterval * 1000 )
 			{
 				//available power has not been updated since EVSE_SHAPER_FAILSAFE_TIME, pause charge

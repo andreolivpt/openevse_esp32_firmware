@@ -183,6 +183,7 @@ uint32_t current_shaper_max_pwr;
 uint32_t current_shaper_smoothing_time;
 uint32_t current_shaper_min_pause_time;   // in seconds
 uint32_t current_shaper_data_maxinterval; // in seconds
+bool current_shaper_release_on_timeout;
 
 // Temperature Throttle settings
 uint32_t temp_throttle_setpoint;
@@ -468,6 +469,7 @@ ConfigOpt *opts[] =
   new ConfigOptDefinition<uint32_t>(current_shaper_smoothing_time, 60, "current_shaper_smoothing_time", "sst"),
   new ConfigOptDefinition<uint32_t>(current_shaper_min_pause_time, 300, "current_shaper_min_pause_time", "spt"),
   new ConfigOptDefinition<uint32_t>(current_shaper_data_maxinterval, 120, "current_shaper_data_maxinterval", "sdm"),
+  new ConfigOptDefinition<bool>(current_shaper_release_on_timeout, false, "current_shaper_release_on_timeout", "srt"),
 
 // Temperature Throttle settings
   new ConfigOptDefinition<uint32_t>(temp_throttle_setpoint, TEMP_THROTTLE_SETPOINT_DEFAULT, "temp_throttle_setpoint", "tts"),

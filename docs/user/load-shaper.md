@@ -17,6 +17,13 @@ and car coincide.
 - Smoothing, a minimum pause time, and a data-timeout interval are
   configurable — if the live feed stops arriving, the shaper falls back to a
   safe current.
+- `current_shaper_release_on_timeout` (default `false`) changes what happens
+  when the live feed stops for `current_shaper_data_maxinterval` seconds:
+  instead of pausing the charge, the shaper releases its claim and the charger
+  carries on as if the shaper were off, until the next live power update
+  starts shaping again. Choose this only when an unprotected charge is
+  preferable to a paused one: while the feed is down nothing limits the house
+  total. It does not apply while a load sharing limit is active.
 
 The [Dashboard](dashboard.md) shows the live house load, the smoothed
 available current, and the resulting charge rate whenever the shaper is
