@@ -95,9 +95,16 @@ if "SCons.Script" == __name__:
     # on the hybrid Arduino + ESP-IDF build, the framework too (40+ minutes).
     # Only src/main.cpp uses them, so add them to that one file.
     version_defines = get_version_defines()
+    project_src = env.subst("$PROJECT_SRC_DIR")
 
     def add_version_defines(env, node):
-        return env.Object(node, CPPDEFINES=env["CPPDEFINES"] + version_defines)
+        # The pattern also matches a library's main.cpp; leave those alone
+        src_path = node.srcnode().get_abspath()
+        if not src_path.startswith(project_src):
+            return node
+        # CPPDEFINES may be a deque (SCons 4.8+), which does not add to a list
+        defines = list(env.get("CPPDEFINES", [])) + version_defines
+        return env.Object(node, CPPDEFINES=defines)
 
     env.AddBuildMiddleware(add_version_defines, "*/main.cpp")
 
