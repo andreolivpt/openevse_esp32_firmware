@@ -367,6 +367,12 @@ class EvseMonitor : public MicroTasks::Task
     void setMqttVoltage(double volts);
     // Drop the live voltage now instead of waiting for it to expire
     void clearMqttVoltage();
+    // A live voltage (MQTT / Shelly LNM / Modbus meter) is in use, rather
+    // than the configured or default one
+    bool hasLiveVoltage() {
+      return 0 != _mqtt_voltage_time &&
+             (millis() - _mqtt_voltage_time) < EVSE_MONITOR_MQTT_VOLTAGE_TIMEOUT_MS;
+    }
     // Charging current measured by an external meter, used instead of the
     // OpenEVSE current sensor until cleared
     void setExternalCurrent(double amps);

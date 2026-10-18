@@ -61,6 +61,7 @@ typedef const __FlashStringHelper *fstr_t;
 #include "web_auth_secret.h"
 #include "shelly_lnm.h"
 #include "modbus_meter.h"
+#include "voltage_throttle.h"
 
 static MongooseHttpServer http_server;     // Create class for HTTP server
 static MongooseHttpServer https_server;    // Create class for HTTPS server
@@ -741,6 +742,11 @@ void buildStatus(JsonDocument &doc) {
   doc["modbus_meter_errors"] = modbus_meter.getErrors();
   if(modbus_meter.getLastError()) {
     doc["modbus_meter_last_error"] = modbus_meter.getLastError();
+  }
+  doc["voltage_throttle_active"] = voltageThrottle.isThrottling()?1:0;
+  doc["voltage_throttle_current"] = voltageThrottle.getLimit();
+  if(!isnan(voltageThrottle.getLastMean())) {
+    doc["voltage_throttle_voltage"] = voltageThrottle.getLastMean();
   }
   doc["service_level"] = static_cast<uint8_t>(evse.getActualServiceLevel());
   doc["limit"] = limit.hasLimit();

@@ -123,6 +123,13 @@ extern uint16_t modbus_meter_unit;
 extern uint32_t modbus_meter_interval;
 extern uint32_t modbus_meter_timeout;
 
+// Low voltage throttle settings
+extern bool voltage_throttle_enabled;
+extern uint32_t voltage_throttle_low;
+extern uint32_t voltage_throttle_high;
+extern uint32_t voltage_throttle_interval;
+extern uint32_t voltage_throttle_step;
+
 // Scheduler settings
 extern uint32_t scheduler_start_window;
 

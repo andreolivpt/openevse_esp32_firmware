@@ -245,6 +245,12 @@ class EvseManager : public MicroTasks::Task
     bool _evaluateClaims;
     bool _evaluateTargetState;
 
+    // Charge current limit from the low voltage throttle, UINT32_MAX = none.
+    // Applied after the claims as the lowest of all limits: max_current
+    // claims are resolved by priority, so a claim could not reliably cap
+    // below what the shaper or load sharing ask for.
+    uint32_t _voltage_throttle_current;
+
     // Retry interval while the EVSE module has not answered yet: starts at
     // 1 s and doubles to 10 s, so a probe lost during boot costs a second
     // rather than the full steady-state interval.
@@ -370,6 +376,22 @@ class EvseManager : public MicroTasks::Task
     }
     void clearExternalEnergy() {
       _monitor.clearExternalEnergy();
+    }
+    bool hasLiveVoltage() {
+      return _monitor.hasLiveVoltage();
+    }
+    void setVoltageThrottleCurrent(uint32_t amps) {
+      if(amps != _voltage_throttle_current) {
+        _voltage_throttle_current = amps;
+        _evaluateTargetState = true;
+        MicroTask.wakeTask(this);
+      }
+    }
+    void clearVoltageThrottleCurrent() {
+      setVoltageThrottleCurrent(UINT32_MAX);
+    }
+    uint32_t getVoltageThrottleCurrent() {
+      return _voltage_throttle_current;
     }
     uint32_t getSessionElapsed() {
       return _monitor.getSessionElapsed();

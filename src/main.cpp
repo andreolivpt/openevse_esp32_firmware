@@ -58,6 +58,7 @@
 #include "notifications.h"
 #include "shelly_lnm.h"
 #include "modbus_meter.h"
+#include "voltage_throttle.h"
 
 #if defined(ENABLE_PN532)
 #include "pn532.h"
@@ -291,6 +292,9 @@ void setup()
 
   modbus_meter.begin();
   DBUGF("After modbus_meter.begin: %d", ESPAL.getFreeHeap());
+
+  voltageThrottle.begin(evse);
+  DBUGF("After voltageThrottle.begin: %d", ESPAL.getFreeHeap());
 
   lcd.display(F("OpenEVSE WiFI"), 0, 0, 0, LCD_CLEAR_LINE);
   lcd.display(currentfirmware, 0, 1, 5 * 1000, LCD_CLEAR_LINE);

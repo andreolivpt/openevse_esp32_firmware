@@ -37,6 +37,7 @@
 #include "limit.h"
 #include "shelly_lnm.h"
 #include "modbus_meter.h"
+#include "voltage_throttle.h"
 #endif
 
 #ifndef HTTP_SERVER_PORT
@@ -169,6 +170,13 @@ uint16_t modbus_meter_port;
 uint16_t modbus_meter_unit;
 uint32_t modbus_meter_interval;
 uint32_t modbus_meter_timeout;
+
+// Low voltage throttle settings
+bool voltage_throttle_enabled;
+uint32_t voltage_throttle_low;
+uint32_t voltage_throttle_high;
+uint32_t voltage_throttle_interval;
+uint32_t voltage_throttle_step;
 
 // Current Shaper settings
 uint32_t current_shaper_max_pwr;
@@ -448,6 +456,13 @@ ConfigOpt *opts[] =
   new ConfigOptDefinition<uint32_t>(modbus_meter_interval, 5, "modbus_meter_interval", "mmi"),
   new ConfigOptDefinition<uint32_t>(modbus_meter_timeout, 90, "modbus_meter_timeout", "mmt"),
 
+// Low voltage throttle settings
+  new ConfigOptDefinition<bool>(voltage_throttle_enabled, false, "voltage_throttle_enabled", "vthe"),
+  new ConfigOptDefinition<uint32_t>(voltage_throttle_low, 212, "voltage_throttle_low", "vthl"),
+  new ConfigOptDefinition<uint32_t>(voltage_throttle_high, 218, "voltage_throttle_high", "vthh"),
+  new ConfigOptDefinition<uint32_t>(voltage_throttle_interval, 30, "voltage_throttle_interval", "vthi"),
+  new ConfigOptDefinition<uint32_t>(voltage_throttle_step, 1, "voltage_throttle_step", "vths"),
+
 // Current Shaper settings
   new ConfigOptDefinition<uint32_t>(current_shaper_max_pwr, 0, "current_shaper_max_pwr", "smp"),
   new ConfigOptDefinition<uint32_t>(current_shaper_smoothing_time, 60, "current_shaper_smoothing_time", "sst"),
@@ -679,6 +694,8 @@ void config_changed(String name)
     if(name == "shelly_lnm_enabled") {
       mqtt.restartConnection();
     }
+  } else if(name.startsWith("voltage_throttle_")) {
+    voltageThrottle.notifyConfigChanged();
   } else if(name.startsWith("modbus_meter_")) {
     modbus_meter.notifyConfigChanged();
     if(name == "modbus_meter_enabled") {
