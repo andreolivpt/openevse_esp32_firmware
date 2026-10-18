@@ -117,6 +117,50 @@ bool modbus_meter_energy_delta(double last_kwh, double now_kwh, uint32_t elapsed
   return true;
 }
 
+bool modbus_value_format_parse(const char *name, ModbusValueFormat &format)
+{
+  if(nullptr == name) {
+    return false;
+  }
+  if(0 == strcmp(name, "int16")) {
+    format = ModbusValueFormat::Int16;
+  } else if(0 == strcmp(name, "uint16")) {
+    format = ModbusValueFormat::UInt16;
+  } else if(0 == strcmp(name, "int32")) {
+    format = ModbusValueFormat::Int32;
+  } else if(0 == strcmp(name, "uint32")) {
+    format = ModbusValueFormat::UInt32;
+  } else if(0 == strcmp(name, "float32")) {
+    format = ModbusValueFormat::Float32;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+uint16_t modbus_value_format_regs(ModbusValueFormat format)
+{
+  return (ModbusValueFormat::Int16 == format || ModbusValueFormat::UInt16 == format) ? 1 : 2;
+}
+
+double modbus_decode_value(const uint16_t *regs, ModbusValueFormat format)
+{
+  switch(format)
+  {
+    case ModbusValueFormat::Int16:
+      return (double)(int16_t)regs[0];
+    case ModbusValueFormat::UInt16:
+      return (double)regs[0];
+    case ModbusValueFormat::Int32:
+      return (double)(int32_t)(((uint32_t)regs[0] << 16) | regs[1]);
+    case ModbusValueFormat::UInt32:
+      return (double)(((uint32_t)regs[0] << 16) | regs[1]);
+    case ModbusValueFormat::Float32:
+      return (double)modbus_regs_to_float(regs);
+  }
+  return 0;
+}
+
 float modbus_regs_to_float(const uint16_t *regs)
 {
   uint32_t raw = ((uint32_t)regs[0] << 16) | regs[1];

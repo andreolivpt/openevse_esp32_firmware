@@ -48,4 +48,23 @@ float modbus_regs_to_float(const uint16_t *regs);
 // a 30 kW load could explain over max(elapsed_ms, 60 s).
 bool modbus_meter_energy_delta(double last_kwh, double now_kwh, uint32_t elapsed_ms, double &wh);
 
+// Register value formats, 32 bit values high word first
+enum class ModbusValueFormat : uint8_t {
+  Int16,
+  UInt16,
+  Int32,
+  UInt32,
+  Float32
+};
+
+// "int16", "uint16", "int32", "uint32" or "float32" (case sensitive).
+// Returns false and leaves `format` untouched for anything else.
+bool modbus_value_format_parse(const char *name, ModbusValueFormat &format);
+
+// Number of registers a value of this format takes (1 or 2)
+uint16_t modbus_value_format_regs(ModbusValueFormat format);
+
+// Decode one value from `regs` (modbus_value_format_regs() registers)
+double modbus_decode_value(const uint16_t *regs, ModbusValueFormat format);
+
 #endif // _MODBUS_METER_PARSER_H

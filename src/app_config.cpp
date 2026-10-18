@@ -37,6 +37,7 @@
 #include "limit.h"
 #include "shelly_lnm.h"
 #include "modbus_meter.h"
+#include "modbus_grid.h"
 #include "voltage_throttle.h"
 #endif
 
@@ -170,6 +171,17 @@ uint16_t modbus_meter_port;
 uint16_t modbus_meter_unit;
 uint32_t modbus_meter_interval;
 uint32_t modbus_meter_timeout;
+
+// Grid power over Modbus TCP for the Load Shaper
+bool modbus_grid_enabled;
+String modbus_grid_host;
+uint16_t modbus_grid_port;
+uint16_t modbus_grid_unit;
+uint16_t modbus_grid_register;
+String modbus_grid_format;
+double modbus_grid_scale;
+bool modbus_grid_invert;
+uint32_t modbus_grid_interval;
 
 // Low voltage throttle settings
 bool voltage_throttle_enabled;
@@ -457,6 +469,17 @@ ConfigOpt *opts[] =
   new ConfigOptDefinition<uint32_t>(modbus_meter_interval, 5, "modbus_meter_interval", "mmi"),
   new ConfigOptDefinition<uint32_t>(modbus_meter_timeout, 90, "modbus_meter_timeout", "mmt"),
 
+// Grid power over Modbus TCP for the Load Shaper (defaults: AlphaESS)
+  new ConfigOptDefinition<bool>(modbus_grid_enabled, false, "modbus_grid_enabled", "mge"),
+  new ConfigOptDefinition<String>(modbus_grid_host, "", "modbus_grid_host", "mgh"),
+  new ConfigOptDefinition<uint16_t>(modbus_grid_port, 502, "modbus_grid_port", "mgp"),
+  new ConfigOptDefinition<uint16_t>(modbus_grid_unit, 85, "modbus_grid_unit", "mgu"),
+  new ConfigOptDefinition<uint16_t>(modbus_grid_register, 0x0021, "modbus_grid_register", "mgr"),
+  new ConfigOptDefinition<String>(modbus_grid_format, "int32", "modbus_grid_format", "mgf"),
+  new ConfigOptDefinition<double>(modbus_grid_scale, 1.0, "modbus_grid_scale", "mgs"),
+  new ConfigOptDefinition<bool>(modbus_grid_invert, false, "modbus_grid_invert", "mgn"),
+  new ConfigOptDefinition<uint32_t>(modbus_grid_interval, 5, "modbus_grid_interval", "mgi"),
+
 // Low voltage throttle settings
   new ConfigOptDefinition<bool>(voltage_throttle_enabled, false, "voltage_throttle_enabled", "vthe"),
   new ConfigOptDefinition<uint32_t>(voltage_throttle_low, 212, "voltage_throttle_low", "vthl"),
@@ -698,6 +721,12 @@ void config_changed(String name)
     }
   } else if(name.startsWith("voltage_throttle_")) {
     voltageThrottle.notifyConfigChanged();
+  } else if(name.startsWith("modbus_grid_")) {
+    modbus_grid.notifyConfigChanged();
+    if(name == "modbus_grid_enabled") {
+      // mqtt_live_pwr is not subscribed to while this source feeds the shaper
+      mqtt.restartConnection();
+    }
   } else if(name.startsWith("modbus_meter_")) {
     modbus_meter.notifyConfigChanged();
     if(name == "modbus_meter_enabled") {

@@ -305,7 +305,8 @@ void Mqtt::subscribeTopics() {
     _mqttclient.subscribe(mqtt_grid_ie); yield();
   }
 
-  if (mqtt_live_pwr != "" && mqtt_live_pwr != mqtt_grid_ie) {
+  // The Modbus grid source feeds the shaper when enabled
+  if (mqtt_live_pwr != "" && mqtt_live_pwr != mqtt_grid_ie && !modbus_grid_enabled) {
     _mqttclient.subscribe(mqtt_live_pwr); yield();
   }
 
@@ -438,11 +439,11 @@ void Mqtt::handleMqttMessage(MongooseString topic, MongooseString payload) {
     divert.setGridIe(grid_ie);
     DBUGF("grid:%dW", grid_ie);
     divert.update_state();
-    if (mqtt_live_pwr == mqtt_grid_ie) {
+    if (mqtt_live_pwr == mqtt_grid_ie && !modbus_grid_enabled) {
       shaper.setLivePwr(divert.getGridIe());
     }
   }
-  else if (topic_string == mqtt_live_pwr) {
+  else if (topic_string == mqtt_live_pwr && !modbus_grid_enabled) {
       shaper.setLivePwr(payload_str.toInt());
       DBUGF("shaper: Live Pwr:%dW", shaper.getLivePwr());
   }

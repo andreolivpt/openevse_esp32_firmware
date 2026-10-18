@@ -91,6 +91,26 @@ When no valid reading arrives for `modbus_meter_timeout` seconds, or the option 
 
 `/status` and the WebSocket / MQTT events report `modbus_meter_connected`, `modbus_meter_active` (meter values in use), `modbus_meter_data_age` (ms), `modbus_meter_voltage`, `modbus_meter_current`, `modbus_meter_power` (W), `modbus_meter_energy` (imported kWh, as counted by the meter), `modbus_meter_errors` and, after a failure, `modbus_meter_last_error`.
 
+## Modbus TCP grid power (Load Shaper)
+
+The [Load Shaper](load-shaper.md) can read the whole-house grid power straight from a Modbus TCP device instead of an MQTT topic. The defaults match an AlphaESS inverter (unit 85, holding register `0x0021`, signed 32 bit watts, positive when importing). AlphaESS inverters accept a single Modbus TCP client, so when something else also reads it, put a Modbus TCP proxy in front and point both at the proxy. Configure it from **Settings → Connectivity → Modbus TCP meter** (`/settings/modbusmeter`), section *Grid power*.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `modbus_grid_enabled` | `false` | Feed the Load Shaper from this device |
+| `modbus_grid_host` | empty | IP address or host name of the device (or proxy) |
+| `modbus_grid_port` | `502` | TCP port |
+| `modbus_grid_unit` | `85` | Modbus address (unit id) |
+| `modbus_grid_register` | `33` (`0x0021`) | Holding register with the grid power |
+| `modbus_grid_format` | `int32` | `int16`, `uint16`, `int32`, `uint32` or `float32`; 32 bit values high word first |
+| `modbus_grid_scale` | `1.0` | Multiplier to get watts (e.g. `1000` for a value in kW) |
+| `modbus_grid_invert` | `false` | Invert the sign, for devices that report export as positive |
+| `modbus_grid_interval` | `5` | Seconds between readings (1 to 60) |
+
+Each reading becomes the shaper live power, exactly like the `mqtt_live_pwr` topic, which is not subscribed to while this source is enabled. Failed reads send nothing; the shaper's data timeout (`current_shaper_data_maxinterval`, and `current_shaper_release_on_timeout`) decides what happens when readings stop. Do not enable it together with Shelly LNM, both would feed the shaper.
+
+`/status` reports `modbus_grid_connected`, `modbus_grid_data_age` (ms), `modbus_grid_power` (W), `modbus_grid_errors` and, after a failure, `modbus_grid_last_error`.
+
 ## Plain HTTP
 
 Everything MQTT can feed in, HTTP can too: POST JSON to the device's `/status`

@@ -62,6 +62,7 @@ typedef const __FlashStringHelper *fstr_t;
 #include "shelly_lnm.h"
 #include "modbus_meter.h"
 #include "voltage_throttle.h"
+#include "modbus_grid.h"
 
 static MongooseHttpServer http_server;     // Create class for HTTP server
 static MongooseHttpServer https_server;    // Create class for HTTPS server
@@ -742,6 +743,13 @@ void buildStatus(JsonDocument &doc) {
   doc["modbus_meter_errors"] = modbus_meter.getErrors();
   if(modbus_meter.getLastError()) {
     doc["modbus_meter_last_error"] = modbus_meter.getLastError();
+  }
+  doc["modbus_grid_connected"] = modbus_grid.isConnected()?1:0;
+  doc["modbus_grid_data_age"] = modbus_grid.getDataAge();
+  doc["modbus_grid_power"] = modbus_grid.getPower();
+  doc["modbus_grid_errors"] = modbus_grid.getErrors();
+  if(modbus_grid.getLastError()) {
+    doc["modbus_grid_last_error"] = modbus_grid.getLastError();
   }
   doc["voltage_throttle_active"] = voltageThrottle.isThrottling()?1:0;
   doc["voltage_throttle_current"] = voltageThrottle.getLimit();

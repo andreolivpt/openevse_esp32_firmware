@@ -154,3 +154,27 @@ TEST_CASE("energy delta rejects untrustworthy steps") {
   // Long gap allows proportionally more: 1 h at 7 kW
   CHECK(modbus_meter_energy_delta(100.0, 107.0, 3600000, wh));
 }
+
+TEST_CASE("value formats") {
+  ModbusValueFormat f = ModbusValueFormat::Int16;
+  CHECK(modbus_value_format_parse("int32", f));
+  CHECK(f == ModbusValueFormat::Int32);
+  CHECK(modbus_value_format_regs(f) == 2);
+  CHECK_FALSE(modbus_value_format_parse("int64", f));
+  CHECK(f == ModbusValueFormat::Int32); // untouched
+  CHECK_FALSE(modbus_value_format_parse(nullptr, f));
+
+  // AlphaESS grid power, int32 high word first: -1234 W and 5432 W
+  uint16_t neg[2] = { 0xFFFF, 0xFB2E };
+  CHECK(modbus_decode_value(neg, ModbusValueFormat::Int32) == doctest::Approx(-1234));
+  uint16_t pos[2] = { 0x0000, 0x1538 };
+  CHECK(modbus_decode_value(pos, ModbusValueFormat::Int32) == doctest::Approx(5432));
+  CHECK(modbus_decode_value(neg, ModbusValueFormat::UInt32) == doctest::Approx(4294966062.0));
+
+  uint16_t s16[1] = { 0xFFF6 };
+  CHECK(modbus_decode_value(s16, ModbusValueFormat::Int16) == doctest::Approx(-10));
+  CHECK(modbus_decode_value(s16, ModbusValueFormat::UInt16) == doctest::Approx(65526));
+
+  uint16_t fl[2] = { 0x4366, 0x8000 };
+  CHECK(modbus_decode_value(fl, ModbusValueFormat::Float32) == doctest::Approx(230.5));
+}

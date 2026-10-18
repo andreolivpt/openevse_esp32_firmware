@@ -123,6 +123,17 @@ extern uint16_t modbus_meter_unit;
 extern uint32_t modbus_meter_interval;
 extern uint32_t modbus_meter_timeout;
 
+// Grid power over Modbus TCP for the Load Shaper
+extern bool modbus_grid_enabled;
+extern String modbus_grid_host;
+extern uint16_t modbus_grid_port;
+extern uint16_t modbus_grid_unit;
+extern uint16_t modbus_grid_register;
+extern String modbus_grid_format;
+extern double modbus_grid_scale;
+extern bool modbus_grid_invert;
+extern uint32_t modbus_grid_interval;
+
 // Low voltage throttle settings
 extern bool voltage_throttle_enabled;
 extern uint32_t voltage_throttle_low;
