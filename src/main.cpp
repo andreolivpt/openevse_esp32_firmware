@@ -99,9 +99,14 @@ unsigned long Timer3; // Timer for events once every 2 seconds
 static uint32_t start_mem = 0;
 static uint32_t last_mem = 0;
 
-// Get running firmware version from build tag environment variable.
-// scripts/auto_fw_version.py defines these for this file only; the fallbacks
-// keep a build without the script (or a missed middleware) compiling.
+// Get running firmware version. scripts/auto_fw_version.py generates
+// build_version.h in the build directory; the fallbacks keep a build without
+// the script compiling.
+#if defined(__has_include)
+#if __has_include("build_version.h")
+#include "build_version.h"
+#endif
+#endif
 #ifndef BUILD_TAG
 #define BUILD_TAG unknown
 #endif
