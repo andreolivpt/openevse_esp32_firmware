@@ -98,18 +98,21 @@ The [Load Shaper](load-shaper.md) can read the whole-house grid power straight f
 | Option | Default | Description |
 |--------|---------|-------------|
 | `modbus_grid_enabled` | `false` | Feed the Load Shaper from this device |
+| `modbus_grid_mode` | `register` | `register`: one configurable register with the grid power; `alphaess`: the AlphaESS grid meter block, for a shaper limited in amps (below) |
 | `modbus_grid_host` | empty | IP address or host name of the device (or proxy) |
 | `modbus_grid_port` | `502` | TCP port |
 | `modbus_grid_unit` | `85` | Modbus address (unit id) |
-| `modbus_grid_register` | `33` (`0x0021`) | Holding register with the grid power |
+| `modbus_grid_register` | `33` (`0x0021`) | Holding register with the grid power (`register` mode) |
 | `modbus_grid_format` | `int32` | `int16`, `uint16`, `int32`, `uint32` or `float32`; 32 bit values high word first |
 | `modbus_grid_scale` | `1.0` | Multiplier to get watts (e.g. `1000` for a value in kW) |
 | `modbus_grid_invert` | `false` | Invert the sign, for devices that report export as positive |
 | `modbus_grid_interval` | `5` | Seconds between readings (1 to 60) |
 
-Each reading becomes the shaper live power, exactly like the `mqtt_live_pwr` topic, which is not subscribed to while this source is enabled. Failed reads send nothing; the shaper's data timeout (`current_shaper_data_maxinterval`, and `current_shaper_release_on_timeout`) decides what happens when readings stop. Do not enable it together with Shelly LNM, both would feed the shaper.
+In `register` mode each reading becomes the shaper live power, exactly like the `mqtt_live_pwr` topic, which is not subscribed to while this source is enabled (`modbus_grid_format`, `modbus_grid_scale` and `modbus_grid_invert` only apply to this mode).
 
-`/status` reports `modbus_grid_connected`, `modbus_grid_data_age` (ms), `modbus_grid_power` (W), `modbus_grid_errors` and, after a failure, `modbus_grid_last_error`.
+In `alphaess` mode one request reads the AlphaESS grid meter block from `0x0014` to `0x0032`: voltage (`0x0014`, 1 V), current (`0x0017`, 0.1 A), total active power (`0x0021`, W) and total apparent power (`0x0031`, VA). The shaper then gets the grid current and voltage instead of a power and limits in amps, see [Load shaper](load-shaper.md#limiting-in-amps). The AlphaESS reports the current as a magnitude, so its direction comes from the active power: while importing the whole current counts, reactive current included; while exporting only the active part, `-W / V`, counts as headroom. Failed reads send nothing; the shaper's data timeout (`current_shaper_data_maxinterval`, and `current_shaper_release_on_timeout`) decides what happens when readings stop. Do not enable it together with Shelly LNM, both would feed the shaper.
+
+`/status` reports `modbus_grid_connected`, `modbus_grid_data_age` (ms), `modbus_grid_power` (W), in `alphaess` mode `modbus_grid_voltage` (V), `modbus_grid_current` (A, negative while exporting) and `modbus_grid_apparent` (VA), `modbus_grid_errors` and, after a failure, `modbus_grid_last_error`.
 
 ## Plain HTTP
 

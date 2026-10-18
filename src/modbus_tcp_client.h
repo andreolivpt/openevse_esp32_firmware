@@ -10,7 +10,7 @@
 #define MODBUS_TCP_CLIENT_TIMEOUT 3000 // ms, max wait for connect / answer
 #endif
 
-#define MODBUS_TCP_CLIENT_MAX_REGS 8
+#define MODBUS_TCP_CLIENT_MAX_REGS 32
 
 #include <Arduino.h>
 #include <functional>

@@ -67,4 +67,29 @@ uint16_t modbus_value_format_regs(ModbusValueFormat format);
 // Decode one value from `regs` (modbus_value_format_regs() registers)
 double modbus_decode_value(const uint16_t *regs, ModbusValueFormat format);
 
+// AlphaESS grid meter block, read in one request:
+//   0x0014 voltage, phase A     uint16  1 V
+//   0x0017 current, phase A     int16   0.1 A (reported as a magnitude)
+//   0x0021 total active power   int32   1 W, positive = importing
+//   0x0031 total apparent power int32   1 VA
+#define ALPHAESS_GRID_BLOCK_START 0x0014
+#define ALPHAESS_GRID_BLOCK_COUNT 31 // 0x0014 .. 0x0032
+
+struct ModbusGridSample {
+  double voltage;  // V
+  double current;  // A, signed: negative only while exporting active power
+  double power;    // W, positive = importing
+  double apparent; // VA
+};
+
+// Decode an AlphaESS grid meter block (ALPHAESS_GRID_BLOCK_COUNT registers
+// from ALPHAESS_GRID_BLOCK_START). Returns false for implausible readings.
+bool modbus_alphaess_grid_decode(const uint16_t *regs, uint16_t count, ModbusGridSample &sample);
+
+// Grid current with a direction, from a current magnitude and the active
+// power. While importing the whole magnitude counts (reactive current
+// included, the breaker sees it). While exporting only the active part counts
+// as headroom, -|P|/V, never beyond the measured magnitude.
+double modbus_grid_signed_current(double amps, double watts, double volts);
+
 #endif // _MODBUS_METER_PARSER_H

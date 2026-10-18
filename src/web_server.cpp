@@ -729,6 +729,10 @@ void buildStatus(JsonDocument &doc) {
   // doc["shaper_cur"] = shaper.getChgCur();
   doc["shaper_cur"] = shaper.getMaxCur();
   doc["shaper_updated"] = shaper.isUpdated();
+  if(shaper.isCurrentMode()) {
+    doc["shaper_live_cur"] = shaper.getLiveCur();
+    doc["shaper_grid_cur_limit"] = shaper.getGridCurLimit();
+  }
   doc["shelly_lnm_listening"] = shelly_lnm.isListening()?1:0;
   doc["shelly_lnm_data_age"] = shelly_lnm.getDataAge();
   doc["shelly_lnm_power"] = shelly_lnm.getPower();
@@ -747,6 +751,11 @@ void buildStatus(JsonDocument &doc) {
   doc["modbus_grid_connected"] = modbus_grid.isConnected()?1:0;
   doc["modbus_grid_data_age"] = modbus_grid.getDataAge();
   doc["modbus_grid_power"] = modbus_grid.getPower();
+  if(modbus_grid.isCurrentMode()) {
+    doc["modbus_grid_voltage"] = modbus_grid.getVoltage();
+    doc["modbus_grid_current"] = modbus_grid.getCurrent();
+    doc["modbus_grid_apparent"] = modbus_grid.getApparent();
+  }
   doc["modbus_grid_errors"] = modbus_grid.getErrors();
   if(modbus_grid.getLastError()) {
     doc["modbus_grid_last_error"] = modbus_grid.getLastError();

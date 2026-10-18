@@ -182,6 +182,7 @@ String modbus_grid_format;
 double modbus_grid_scale;
 bool modbus_grid_invert;
 uint32_t modbus_grid_interval;
+String modbus_grid_mode;
 
 // Low voltage throttle settings
 bool voltage_throttle_enabled;
@@ -196,6 +197,8 @@ uint32_t current_shaper_smoothing_time;
 uint32_t current_shaper_min_pause_time;   // in seconds
 uint32_t current_shaper_data_maxinterval; // in seconds
 bool current_shaper_release_on_timeout;
+uint32_t current_shaper_max_cur; // A, current mode only, 0 = not used
+uint32_t current_shaper_max_va;  // VA, current mode only, 0 = not used
 
 // Temperature Throttle settings
 uint32_t temp_throttle_setpoint;
@@ -479,6 +482,7 @@ ConfigOpt *opts[] =
   new ConfigOptDefinition<double>(modbus_grid_scale, 1.0, "modbus_grid_scale", "mgs"),
   new ConfigOptDefinition<bool>(modbus_grid_invert, false, "modbus_grid_invert", "mgn"),
   new ConfigOptDefinition<uint32_t>(modbus_grid_interval, 5, "modbus_grid_interval", "mgi"),
+  new ConfigOptDefinition<String>(modbus_grid_mode, "register", "modbus_grid_mode", "mgm"),
 
 // Low voltage throttle settings
   new ConfigOptDefinition<bool>(voltage_throttle_enabled, false, "voltage_throttle_enabled", "vthe"),
@@ -493,6 +497,8 @@ ConfigOpt *opts[] =
   new ConfigOptDefinition<uint32_t>(current_shaper_min_pause_time, 300, "current_shaper_min_pause_time", "spt"),
   new ConfigOptDefinition<uint32_t>(current_shaper_data_maxinterval, 120, "current_shaper_data_maxinterval", "sdm"),
   new ConfigOptDefinition<bool>(current_shaper_release_on_timeout, false, "current_shaper_release_on_timeout", "srt"),
+  new ConfigOptDefinition<uint32_t>(current_shaper_max_cur, 0, "current_shaper_max_cur", "smc"),
+  new ConfigOptDefinition<uint32_t>(current_shaper_max_va, 0, "current_shaper_max_va", "smv"),
 
 // Temperature Throttle settings
   new ConfigOptDefinition<uint32_t>(temp_throttle_setpoint, TEMP_THROTTLE_SETPOINT_DEFAULT, "temp_throttle_setpoint", "tts"),

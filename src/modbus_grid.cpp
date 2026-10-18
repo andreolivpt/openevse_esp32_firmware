@@ -23,6 +23,9 @@ ModbusGridTask::ModbusGridTask() :
   _lastUpdate(0),
   _lastEvent(0),
   _power(NAN),
+  _voltage(NAN),
+  _current(NAN),
+  _apparent(NAN),
   _errors(0),
   _lastError(nullptr),
   _running(false)
@@ -41,16 +44,26 @@ void ModbusGridTask::setup()
 
 void ModbusGridTask::notifyConfigChanged()
 {
+  // The mode, register or scale may have changed: old values mean nothing now
+  clearReadings();
   _lastPoll = 0;
   MicroTask.wakeTask(this);
+}
+
+void ModbusGridTask::clearReadings()
+{
+  _lastUpdate = 0;
+  _power = NAN;
+  _voltage = NAN;
+  _current = NAN;
+  _apparent = NAN;
 }
 
 void ModbusGridTask::stop()
 {
   _client.close();
   _lastPoll = 0;
-  _lastUpdate = 0;
-  _power = NAN;
+  clearReadings();
   _running = false;
 }
 
@@ -104,6 +117,15 @@ unsigned long ModbusGridTask::loop(MicroTasks::WakeReason reason)
 
 void ModbusGridTask::startRead()
 {
+  if(isCurrentMode()) {
+    startAlphaessRead();
+  } else {
+    startRegisterRead();
+  }
+}
+
+void ModbusGridTask::startRegisterRead()
+{
   ModbusValueFormat format = ModbusValueFormat::Int32;
   if(!modbus_value_format_parse(modbus_grid_format.c_str(), format))
   {
@@ -116,7 +138,7 @@ void ModbusGridTask::startRead()
     [this, format](bool ok, const uint16_t *regs, uint16_t count, const char *error)
     {
       if(!ok) {
-        onRead(false, nullptr, 0, error);
+        onRead(false, error);
         return;
       }
 
@@ -126,16 +148,48 @@ void ModbusGridTask::startRead()
       }
 
       if(isnan(watts) || isinf(watts) || fabs(watts) > MODBUS_GRID_POWER_MAX) {
-        onRead(false, nullptr, 0, "implausible value");
+        onRead(false, "implausible value");
         return;
       }
 
       _power = watts;
-      onRead(true, regs, count, nullptr);
+      _voltage = NAN;
+      _current = NAN;
+      _apparent = NAN;
+      onRead(true, nullptr);
+
+      // Same path as the MQTT live power topic and POST /status
+      shaper.setLivePwr((int)lround(_power));
     });
 }
 
-void ModbusGridTask::onRead(bool ok, const uint16_t *regs, uint16_t count, const char *error)
+void ModbusGridTask::startAlphaessRead()
+{
+  _client.read(ALPHAESS_GRID_BLOCK_START, ALPHAESS_GRID_BLOCK_COUNT,
+    [this](bool ok, const uint16_t *regs, uint16_t count, const char *error)
+    {
+      if(!ok) {
+        onRead(false, error);
+        return;
+      }
+
+      ModbusGridSample sample;
+      if(!modbus_alphaess_grid_decode(regs, count, sample)) {
+        onRead(false, "implausible value");
+        return;
+      }
+
+      _voltage = sample.voltage;
+      _current = sample.current;
+      _power = sample.power;
+      _apparent = sample.apparent;
+      onRead(true, nullptr);
+
+      shaper.setLiveCurrent(_current, _voltage);
+    });
+}
+
+void ModbusGridTask::onRead(bool ok, const char *error)
 {
   if(!ok)
   {
@@ -151,10 +205,7 @@ void ModbusGridTask::onRead(bool ok, const uint16_t *regs, uint16_t count, const
   }
   _lastError = nullptr;
 
-  // Same path as the MQTT live power topic and POST /status
-  shaper.setLivePwr((int)lround(_power));
-
-  // The shaper publishes its own live power on every update; keep this
+  // The shaper publishes its own live values on every update; keep this
   // status feed light
   if(0 == _lastEvent || (uint32_t)(_lastUpdate - _lastEvent) >= 10000) {
     _lastEvent = _lastUpdate;
@@ -168,6 +219,11 @@ void ModbusGridTask::sendStatusEvent()
   doc["modbus_grid_connected"] = _client.isConnected() ? 1 : 0;
   doc["modbus_grid_data_age"] = getDataAge();
   doc["modbus_grid_power"] = _power;
+  if(isCurrentMode()) {
+    doc["modbus_grid_voltage"] = _voltage;
+    doc["modbus_grid_current"] = _current;
+    doc["modbus_grid_apparent"] = _apparent;
+  }
   doc["modbus_grid_errors"] = _errors;
   event_send(doc);
 }

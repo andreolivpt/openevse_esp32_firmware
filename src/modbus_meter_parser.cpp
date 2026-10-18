@@ -168,3 +168,48 @@ float modbus_regs_to_float(const uint16_t *regs)
   memcpy(&value, &raw, sizeof(value));
   return value;
 }
+
+double modbus_grid_signed_current(double amps, double watts, double volts)
+{
+  double magnitude = amps < 0 ? -amps : amps;
+  if(watts >= 0 || volts <= 0) {
+    return magnitude;
+  }
+  double active = -watts / volts;
+  return -(active < magnitude ? active : magnitude);
+}
+
+static int32_t regs_to_int32(const uint16_t *regs)
+{
+  return (int32_t)(((uint32_t)regs[0] << 16) | regs[1]);
+}
+
+bool modbus_alphaess_grid_decode(const uint16_t *regs, uint16_t count, ModbusGridSample &sample)
+{
+  if(nullptr == regs || count < ALPHAESS_GRID_BLOCK_COUNT) {
+    return false;
+  }
+
+  // register address -> index in the block
+  #define ALPHAESS_REG(addr) ((addr) - ALPHAESS_GRID_BLOCK_START)
+  double voltage = (double)regs[ALPHAESS_REG(0x0014)];
+  double amps = (double)(int16_t)regs[ALPHAESS_REG(0x0017)] * 0.1;
+  double power = (double)regs_to_int32(regs + ALPHAESS_REG(0x0021));
+  double apparent = (double)regs_to_int32(regs + ALPHAESS_REG(0x0031));
+  #undef ALPHAESS_REG
+
+  // A home supply: anything else is a wrong register map or a bad reading
+  if(voltage < 150 || voltage > 300 ||
+     amps < -200 || amps > 200 ||
+     power < -200000 || power > 200000 ||
+     apparent < -200000 || apparent > 200000)
+  {
+    return false;
+  }
+
+  sample.voltage = voltage;
+  sample.power = power;
+  sample.apparent = apparent < 0 ? -apparent : apparent;
+  sample.current = modbus_grid_signed_current(amps, power, voltage);
+  return true;
+}

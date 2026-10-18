@@ -1,5 +1,6 @@
 #include "current_shaper.h"
 #include "input_filter.h"
+#include "current_shaper_limit.h"
 
 //global instance
 CurrentShaperTask shaper;
@@ -11,6 +12,11 @@ CurrentShaperTask::CurrentShaperTask() : MicroTasks::Task() {
 	_max_pwr = 0;
 	_live_pwr = 0;
 	_smoothed_live_pwr = 0;
+	_cur_mode = false;
+	_live_cur = 0;
+	_smoothed_live_cur = 0;
+	_grid_voltage = 0;
+	_grid_cur_limit = 0;
 	_chg_cur = 0;
 	_max_cur = 0;
 	_pause_timer = 0;
@@ -41,6 +47,11 @@ void CurrentShaperTask::publishShaperEvent()
 	event["shaper_max_pwr"] = _max_pwr;
 	event["shaper_cur"] = _max_cur;
 	event["shaper_updated"] = _updated;
+	if (_cur_mode) {
+		event["shaper_live_cur"] = _live_cur;
+		event["shaper_smoothed_live_cur"] = _smoothed_live_cur;
+		event["shaper_grid_cur_limit"] = _grid_cur_limit;
+	}
 	event_send(event);
 }
 
@@ -108,6 +119,7 @@ unsigned long CurrentShaperTask::loop(MicroTasks::WakeReason reason) {
 					DBUGF("shaper_live_pwr has not been updated in time, releasing the shaper claim");
 					_updated = false;
 					_smoothed_live_pwr = _live_pwr;
+					_smoothed_live_cur = _live_cur;
 					_pause_timer = 0;
 				}
 
@@ -134,6 +146,7 @@ unsigned long CurrentShaperTask::loop(MicroTasks::WakeReason reason) {
 					_pause_timer = millis();
 					_updated = false;
 					_smoothed_live_pwr = _live_pwr;
+					_smoothed_live_cur = _live_cur;
 					wentStale = true;
 				}
 
@@ -177,6 +190,7 @@ unsigned long CurrentShaperTask::loop(MicroTasks::WakeReason reason) {
 			if (_evse->clientHasClaim(EvseClient_OpenEVSE_Shaper)) {
 				_evse->release(EvseClient_OpenEVSE_Shaper);
 				_smoothed_live_pwr = 0;
+				_smoothed_live_cur = 0;
 			}
 		}
 	}
@@ -217,8 +231,34 @@ void CurrentShaperTask::setMaxPwr(int max_pwr) {
 }
 
 void CurrentShaperTask::setLivePwr(int live_pwr) {
+	_cur_mode = false;
 	_live_pwr = live_pwr;
 	shapeCurrent();
+}
+
+void CurrentShaperTask::setLiveCurrent(double amps, double volts) {
+	if (!_cur_mode) {
+		// Don't carry a filtered power over as a current
+		_smoothed_live_cur = amps;
+	}
+	_cur_mode = true;
+	_live_cur = amps;
+	_grid_voltage = volts;
+	// Kept for the status feeds that only know the power
+	_live_pwr = (int)lround(amps * volts);
+	shapeCurrent();
+}
+
+bool CurrentShaperTask::isCurrentMode() {
+	return _cur_mode;
+}
+
+double CurrentShaperTask::getLiveCur() {
+	return _live_cur;
+}
+
+double CurrentShaperTask::getGridCurLimit() {
+	return _grid_cur_limit;
 }
 
 // temporary change Current Shaper state without changing configuration
@@ -249,6 +289,34 @@ void CurrentShaperTask::setTimerEnabled(bool active) {
 
 void CurrentShaperTask::shapeCurrent() {
 	_updated = true;
+
+	if (_cur_mode) {
+		// Same smoothing as for the power: straight through while charging,
+		// rising at once and decaying slowly while paused
+		double livecur;
+		if (_pause_timer == 0) {
+			_smoothed_live_cur = _live_cur;
+			livecur = _live_cur;
+		}
+		else {
+			if (_live_cur > _smoothed_live_cur) {
+				_smoothed_live_cur = _live_cur;
+			}
+			else {
+				_smoothed_live_cur = _inputFilter.filter(_live_cur, _smoothed_live_cur, current_shaper_smoothing_time);
+			}
+			livecur = _smoothed_live_cur;
+		}
+		_smoothed_live_pwr = _smoothed_live_cur * _grid_voltage;
+
+		// The grid current is per phase, so this holds for three phase too
+		_grid_cur_limit = shaper_grid_current_limit(current_shaper_max_cur, current_shaper_max_va,
+		                                            _max_pwr, _grid_voltage);
+		_max_cur = shaper_ev_current_from_grid(_grid_cur_limit, livecur, _evse->getAmps());
+		_changed = true;
+		return;
+	}
+
 	// adding self produced energy to total
 	int max_pwr = _max_pwr;
 

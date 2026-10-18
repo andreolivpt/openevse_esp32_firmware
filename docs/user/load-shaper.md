@@ -25,6 +25,27 @@ and car coincide.
   preferable to a paused one: while the feed is down nothing limits the house
   total. It does not apply while a load sharing limit is active.
 
+### Limiting in amps
+
+A supply breaker trips on current (or on apparent power), not on watts: with
+a low supply voltage, or reactive current from an inverter, the same watts
+mean more amps. When the live data is the grid current, from the
+[Modbus TCP grid power](integrations.md#modbus-tcp-grid-power-load-shaper)
+source in `alphaess` mode, the shaper keeps the whole-house grid current
+under a limit instead of the power under *Max power allowed*:
+
+- `current_shaper_max_cur` (A, `0` = not used) — the current limit.
+- `current_shaper_max_va` (VA, `0` = not used) — an apparent power limit,
+  divided by the grid voltage of the moment, for supplies limited in kVA: at
+  235 V a 6900 VA supply allows only 29.4 A.
+- With both set the lower one applies; with neither, *Max power allowed* is
+  used as the VA limit.
+
+The current left for the vehicle is the limit minus the grid current plus
+what the vehicle draws. Smoothing, pausing and the data timeout work as in
+power mode. `/status` then also reports `shaper_live_cur` (A) and
+`shaper_grid_cur_limit` (A).
+
 The [Dashboard](dashboard.md) shows the live house load, the smoothed
 available current, and the resulting charge rate whenever the shaper is
 active.

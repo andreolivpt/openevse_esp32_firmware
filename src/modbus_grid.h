@@ -3,10 +3,17 @@
 
 // Grid power over Modbus TCP for the Load Shaper
 //
-// Periodically reads the whole-house grid power from a Modbus TCP device
-// (defaults match an AlphaESS inverter: unit 85, holding register 0x0021,
-// int32 W, positive = importing) and feeds it to the Load Shaper as its live
-// power, in place of the MQTT live power topic.
+// Periodically reads the whole-house grid supply from a Modbus TCP device and
+// feeds it to the Load Shaper, in place of the MQTT live power topic.
+//
+// modbus_grid_mode:
+//  "register"  one configurable register holding the grid power (W),
+//              given to the shaper as its live power (defaults match an
+//              AlphaESS: unit 85, register 0x0021, int32, positive = import)
+//  "alphaess"  the AlphaESS grid meter block (voltage, current, active and
+//              apparent power) in one read; the shaper gets the grid current
+//              and voltage and limits in amps (current_shaper_max_cur /
+//              current_shaper_max_va)
 //
 // Nothing is sent when a read fails: the Load Shaper's own data timeout
 // (current_shaper_data_maxinterval, and current_shaper_release_on_timeout)
@@ -24,6 +31,7 @@
 
 #include "modbus_tcp_client.h"
 #include "modbus_meter_parser.h"
+#include "app_config.h"
 
 class ModbusGridTask : public MicroTasks::Task
 {
@@ -32,13 +40,19 @@ class ModbusGridTask : public MicroTasks::Task
     uint32_t _lastPoll;
     uint32_t _lastUpdate;
     uint32_t _lastEvent;
-    double _power;
+    double _power;    // W
+    double _voltage;  // V, alphaess mode
+    double _current;  // A, alphaess mode, negative while exporting
+    double _apparent; // VA, alphaess mode
     uint32_t _errors;
     const char *_lastError;
     bool _running;
 
     void startRead();
-    void onRead(bool ok, const uint16_t *regs, uint16_t count, const char *error);
+    void startRegisterRead();
+    void startAlphaessRead();
+    void onRead(bool ok, const char *error);
+    void clearReadings();
     void sendStatusEvent();
     uint32_t getIntervalMs();
 
@@ -59,6 +73,22 @@ class ModbusGridTask : public MicroTasks::Task
 
     double getPower() {
       return _power;
+    }
+
+    bool isCurrentMode() {
+      return modbus_grid_mode == "alphaess";
+    }
+
+    double getVoltage() {
+      return _voltage;
+    }
+
+    double getCurrent() {
+      return _current;
+    }
+
+    double getApparent() {
+      return _apparent;
     }
 
     uint32_t getErrors() {

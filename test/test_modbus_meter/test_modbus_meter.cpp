@@ -4,6 +4,7 @@
 #include <string.h>
 #include <vector>
 #include "modbus_meter_parser.h"
+#include "current_shaper_limit.h"
 
 // Build a read holding registers response frame
 static std::vector<uint8_t> response(uint16_t tid, uint8_t unit, const std::vector<uint16_t> &regs)
@@ -177,4 +178,92 @@ TEST_CASE("value formats") {
 
   uint16_t fl[2] = { 0x4366, 0x8000 };
   CHECK(modbus_decode_value(fl, ModbusValueFormat::Float32) == doctest::Approx(230.5));
+}
+
+// AlphaESS grid block as read on a real system (0x0014 .. 0x0032):
+// 235 V, 1.8 A, -7 W, -291 var, 423 VA
+static std::vector<uint16_t> alphaess_block()
+{
+  std::vector<uint16_t> r(ALPHAESS_GRID_BLOCK_COUNT, 0);
+  auto at = [&](uint16_t addr) -> uint16_t & { return r[addr - ALPHAESS_GRID_BLOCK_START]; };
+  at(0x0014) = 235;
+  at(0x0017) = 18;
+  at(0x001A) = 4997;
+  at(0x001B) = 0xFFFF; at(0x001C) = 0xFFF9; // -7 W phase A
+  at(0x0021) = 0xFFFF; at(0x0022) = 0xFFF9; // -7 W total
+  at(0x0029) = 0xFFFF; at(0x002A) = 0xFEDD; // -291 var
+  at(0x002B) = 0;      at(0x002C) = 423;
+  at(0x0031) = 0;      at(0x0032) = 423;    // 423 VA total
+  return r;
+}
+
+TEST_CASE("AlphaESS grid block decodes the real reading") {
+  std::vector<uint16_t> r = alphaess_block();
+  ModbusGridSample s;
+  REQUIRE(modbus_alphaess_grid_decode(r.data(), r.size(), s));
+  CHECK(s.voltage == doctest::Approx(235));
+  CHECK(s.power == doctest::Approx(-7));
+  CHECK(s.apparent == doctest::Approx(423));
+  // Exporting 7 W: only the active part counts as headroom, not the 1.8 A
+  // of reactive current
+  CHECK(s.current == doctest::Approx(-7.0 / 235.0));
+}
+
+TEST_CASE("AlphaESS grid block while importing") {
+  std::vector<uint16_t> r = alphaess_block();
+  r[0x0017 - ALPHAESS_GRID_BLOCK_START] = 254;  // 25.4 A
+  r[0x0021 - ALPHAESS_GRID_BLOCK_START] = 0;
+  r[0x0022 - ALPHAESS_GRID_BLOCK_START] = 5800; // 5800 W
+  ModbusGridSample s;
+  REQUIRE(modbus_alphaess_grid_decode(r.data(), r.size(), s));
+  CHECK(s.current == doctest::Approx(25.4));
+  CHECK(s.power == doctest::Approx(5800));
+}
+
+TEST_CASE("AlphaESS grid block rejects bad readings") {
+  ModbusGridSample s;
+  std::vector<uint16_t> r = alphaess_block();
+  CHECK_FALSE(modbus_alphaess_grid_decode(r.data(), r.size() - 1, s));
+  CHECK_FALSE(modbus_alphaess_grid_decode(nullptr, ALPHAESS_GRID_BLOCK_COUNT, s));
+
+  r[0x0014 - ALPHAESS_GRID_BLOCK_START] = 0; // no voltage
+  CHECK_FALSE(modbus_alphaess_grid_decode(r.data(), r.size(), s));
+
+  r = alphaess_block();
+  r[0x0017 - ALPHAESS_GRID_BLOCK_START] = 30000; // 3000 A
+  CHECK_FALSE(modbus_alphaess_grid_decode(r.data(), r.size(), s));
+}
+
+TEST_CASE("signed grid current") {
+  CHECK(modbus_grid_signed_current(10, 2300, 230) == doctest::Approx(10));
+  CHECK(modbus_grid_signed_current(-10, 2300, 230) == doctest::Approx(10));
+  CHECK(modbus_grid_signed_current(1.8, 0, 235) == doctest::Approx(1.8));
+  // exporting 2300 W at 230 V: -10 A
+  CHECK(modbus_grid_signed_current(10.5, -2300, 230) == doctest::Approx(-10));
+  // never more headroom than the measured current
+  CHECK(modbus_grid_signed_current(5, -2300, 230) == doctest::Approx(-5));
+  CHECK(modbus_grid_signed_current(5, -2300, 0) == doctest::Approx(5));
+}
+
+TEST_CASE("shaper grid current limit") {
+  // amps only
+  CHECK(shaper_grid_current_limit(29, 0, 0, 235) == doctest::Approx(29));
+  // kVA only, follows the voltage
+  CHECK(shaper_grid_current_limit(0, 6900, 0, 230) == doctest::Approx(30));
+  CHECK(shaper_grid_current_limit(0, 6900, 0, 235) == doctest::Approx(6900.0 / 235));
+  // both: the lower one
+  CHECK(shaper_grid_current_limit(29, 6900, 0, 215) == doctest::Approx(29));
+  CHECK(shaper_grid_current_limit(29, 6900, 0, 240) == doctest::Approx(28.75));
+  // neither: the shaper's max power as VA
+  CHECK(shaper_grid_current_limit(0, 0, 6000, 240) == doctest::Approx(25));
+  // nothing usable
+  CHECK(shaper_grid_current_limit(0, 0, 0, 230) == doctest::Approx(0));
+  CHECK(shaper_grid_current_limit(0, 6900, 0, 0) == doctest::Approx(0));
+}
+
+TEST_CASE("vehicle current from the grid current") {
+  // house 10 A + car 16 A = 26 A on the grid, limit 29 A: car may take 19 A
+  CHECK(shaper_ev_current_from_grid(29, 26, 16) == doctest::Approx(19));
+  // stove on: grid 36 A with the car at 16 A, car must drop to 9 A
+  CHECK(shaper_ev_current_from_grid(29, 36, 16) == doctest::Approx(9));
 }

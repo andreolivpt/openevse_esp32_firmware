@@ -133,6 +133,7 @@ extern String modbus_grid_format;
 extern double modbus_grid_scale;
 extern bool modbus_grid_invert;
 extern uint32_t modbus_grid_interval;
+extern String modbus_grid_mode;
 
 // Low voltage throttle settings
 extern bool voltage_throttle_enabled;
@@ -171,6 +172,8 @@ extern uint32_t current_shaper_smoothing_time;
 extern uint32_t current_shaper_min_pause_time;
 extern uint32_t current_shaper_data_maxinterval;
 extern bool current_shaper_release_on_timeout;
+extern uint32_t current_shaper_max_cur;
+extern uint32_t current_shaper_max_va;
 
 // Temperature Throttle settings
 extern uint32_t temp_throttle_setpoint;

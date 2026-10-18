@@ -34,6 +34,11 @@ class CurrentShaperTask: public MicroTasks::Task
     int          _max_pwr;   // total current available from the grid
     int          _live_pwr;  // current available to EVSE
     double       _smoothed_live_pwr; // filtered live power for getting out of pause only
+    bool         _cur_mode;  // live data is a grid current (setLiveCurrent), not a power
+    double       _live_cur;  // grid current (A), negative while exporting
+    double       _smoothed_live_cur; // filtered grid current for getting out of pause only
+    double       _grid_voltage; // V, comes with the grid current
+    double       _grid_cur_limit; // A, limit the house is kept under in current mode
     uint8_t      _chg_cur;   // calculated charge current to claim
     double       _max_cur;   // shaper calculated max current
     uint32_t     _timer;
@@ -56,6 +61,14 @@ class CurrentShaperTask: public MicroTasks::Task
     void shapeCurrent();
     void setMaxPwr(int max_pwr);
     void setLivePwr(int live_pwr);
+    // Live data as the whole-house grid current (A, negative while exporting)
+    // and the grid voltage: the shaper then keeps the grid current under
+    // current_shaper_max_cur and current_shaper_max_va / voltage instead of
+    // the power under current_shaper_max_pwr. setLivePwr() switches back.
+    void setLiveCurrent(double amps, double volts);
+    bool isCurrentMode();
+    double getLiveCur();
+    double getGridCurLimit();
     void setState(bool state);
     bool getState();
     int getMaxPwr();
