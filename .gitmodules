@@ -1,7 +1,7 @@
 [submodule "gui-nightshift"]
 	path = gui-nightshift
 	url = https://github.com/andreolivpt/openevse-gui-nightshift.git
-	branch = feature/modbus-meter
+	branch = develop
 [submodule "migrator"]
 	path = migrator
 	url = https://github.com/RAR/openevse-16mb-migrator
