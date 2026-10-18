@@ -75,11 +75,34 @@ def get_manifest_flag():
 
 build_flags = get_build_flag() + get_manifest_flag()
 
+def get_version_defines():
+    """BUILD_TAG / BUILD_HASH as (name, value) pairs for CPPDEFINES."""
+    defines = []
+    for flag in get_build_flag().split("-D "):
+        flag = flag.strip()
+        if "=" in flag:
+            name, value = flag.split("=", 1)
+            defines.append((name, value))
+    return defines
+
 if "SCons.Script" == __name__:
     print ("Firmware Revision: " + build_flags)
     Import("env")
-    env.Append(
-        BUILD_FLAGS=[build_flags]
-    )
+
+    # BUILD_TAG / BUILD_HASH change with every commit (and with "_modified").
+    # As global build flags they changed the command line of every source
+    # file, so each new commit rebuilt the whole project, its libraries and,
+    # on the hybrid Arduino + ESP-IDF build, the framework too (40+ minutes).
+    # Only src/main.cpp uses them, so add them to that one file.
+    version_defines = get_version_defines()
+
+    def add_version_defines(env, node):
+        return env.Object(node, CPPDEFINES=env["CPPDEFINES"] + version_defines)
+
+    env.AddBuildMiddleware(add_version_defines, "*/main.cpp")
+
+    manifest_flag = get_manifest_flag()
+    if manifest_flag:
+        env.Append(BUILD_FLAGS=[manifest_flag])
 elif "__main__" == __name__:
     print(build_flags)
