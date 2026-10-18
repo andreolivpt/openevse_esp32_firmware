@@ -250,6 +250,7 @@ class EvseManager : public MicroTasks::Task
     // claims are resolved by priority, so a claim could not reliably cap
     // below what the shaper or load sharing ask for.
     uint32_t _voltage_throttle_current;
+    bool _voltage_throttle_binding; // the low voltage cap set the pilot last time
 
     // Retry interval while the EVSE module has not answered yet: starts at
     // 1 s and doubles to 10 s, so a probe lost during boot costs a second
@@ -392,6 +393,10 @@ class EvseManager : public MicroTasks::Task
     }
     uint32_t getVoltageThrottleCurrent() {
       return _voltage_throttle_current;
+    }
+    // True when the low voltage throttle, not a claim, set the current pilot
+    bool isVoltageThrottleBinding() {
+      return _voltage_throttle_binding;
     }
     uint32_t getSessionElapsed() {
       return _monitor.getSessionElapsed();

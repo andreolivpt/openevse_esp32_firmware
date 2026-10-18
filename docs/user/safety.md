@@ -40,6 +40,8 @@ With a live voltage measurement — a [Modbus TCP meter](integrations.md#modbus-
 
 Between the two thresholds the limit is kept, so the charger does not hunt. The first step down starts from what the vehicle actually draws, so it takes effect even when the car limits its own current below the pilot. The limit never goes below the charger's minimum current and never raises what another feature (Load Shaper, Solar divert, a schedule, ...) asked for. It is removed when it reaches the maximum current, when the vehicle stays well below it, when charging stops, or when no live voltage is available.
 
+On the TFT display the pilot line names what sets the current: `low voltage` while this throttle holds it down, `grid limit` for the Load Shaper.
+
 `/status` and the events report `voltage_throttle_active`, `voltage_throttle_current` (A, 0 when not throttling) and `voltage_throttle_voltage` (mean of the last interval).
 
 ## Boot lock & heartbeat

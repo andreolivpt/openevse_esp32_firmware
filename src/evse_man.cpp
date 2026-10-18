@@ -138,6 +138,7 @@ EvseManager::EvseManager(Stream &port, EventLog &eventLog) :
   _evaluateClaims(true),
   _evaluateTargetState(false),
   _voltage_throttle_current(UINT32_MAX),
+  _voltage_throttle_binding(false),
   _evseConnectRetryMs(EVSE_CONNECT_RETRY_MIN_MS),
   _vehicleValid(0),
   _vehicleUpdated(0),
@@ -292,7 +293,8 @@ bool EvseManager::setTargetState(EvseProperties &target)
   DBUGVAR(charge_current);
 
   // Low voltage throttle, never raises what the claims asked for
-  if(_voltage_throttle_current < charge_current) {
+  _voltage_throttle_binding = _voltage_throttle_current < charge_current;
+  if(_voltage_throttle_binding) {
     charge_current = _voltage_throttle_current;
   }
   DBUGVAR(charge_current);
