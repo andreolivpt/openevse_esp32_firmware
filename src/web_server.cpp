@@ -63,6 +63,7 @@ typedef const __FlashStringHelper *fstr_t;
 #include "modbus_meter.h"
 #include "voltage_throttle.h"
 #include "modbus_grid.h"
+#include "voltage_drop.h"
 
 static MongooseHttpServer http_server;     // Create class for HTTP server
 static MongooseHttpServer https_server;    // Create class for HTTPS server
@@ -760,6 +761,8 @@ void buildStatus(JsonDocument &doc) {
   if(modbus_grid.getLastError()) {
     doc["modbus_grid_last_error"] = modbus_grid.getLastError();
   }
+  doc["voltage_drop_available"] = voltageDrop.isAvailable() ? 1 : 0;
+  voltageDrop.addStatus(doc);
   doc["voltage_throttle_active"] = voltageThrottle.isThrottling()?1:0;
   doc["voltage_throttle_current"] = voltageThrottle.getLimit();
   if(!isnan(voltageThrottle.getLastMean())) {

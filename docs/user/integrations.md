@@ -114,6 +114,23 @@ In `alphaess` mode one request reads the AlphaESS grid meter block from `0x0014`
 
 `/status` reports `modbus_grid_connected`, `modbus_grid_data_age` (ms), `modbus_grid_power` (W), in `alphaess` mode `modbus_grid_voltage` (V), `modbus_grid_current` (A, negative while exporting) and `modbus_grid_apparent` (VA), `modbus_grid_errors` and, after a failure, `modbus_grid_last_error`.
 
+### Voltage drop to the charger
+
+With both the Modbus TCP meter and the grid power source in `alphaess` mode, the firmware compares the entrance voltage (AlphaESS) with the voltage on the charger circuit and reports the drop along the cable between them. It is shown on the Modbus TCP meter page and in `/status` / the events (and so over MQTT), refreshed every 30 seconds:
+
+| Field | Description |
+|-------|-------------|
+| `voltage_drop_available` | `1` while both meters have fresh readings |
+| `voltage_drop` | V, entrance minus charger, less the calibration offset once known |
+| `voltage_drop_pct` | the drop as a percentage of the entrance voltage |
+| `voltage_drop_grid_voltage`, `voltage_drop_charger_voltage` | V, the two readings compared |
+| `voltage_drop_offset` | V, difference between the two meters with no current, learnt while not charging (meter calibration) |
+| `voltage_drop_resistance` | Ω, resistance of the run, learnt while charging at 6 A or more |
+| `voltage_drop_loss` | W lost in the run at the present current |
+| `voltage_drop_at_max`, `voltage_drop_max_current` | V of drop expected at the maximum configured current (A) |
+
+The offset needs about a minute without charging and the resistance about half a minute of steady charging after that; both are moving averages over about five minutes of readings and start again after a restart. The entrance voltage comes in whole volts and the two meters are read a few seconds apart, so single readings jump by a volt or two; the averages do not.
+
 ## Plain HTTP
 
 Everything MQTT can feed in, HTTP can too: POST JSON to the device's `/status`

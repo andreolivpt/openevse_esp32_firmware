@@ -5,6 +5,7 @@
 #include <vector>
 #include "modbus_meter_parser.h"
 #include "current_shaper_limit.h"
+#include "voltage_drop_logic.h"
 
 // Build a read holding registers response frame
 static std::vector<uint8_t> response(uint16_t tid, uint8_t unit, const std::vector<uint16_t> &regs)
@@ -266,4 +267,63 @@ TEST_CASE("vehicle current from the grid current") {
   CHECK(shaper_ev_current_from_grid(29, 26, 16) == doctest::Approx(19));
   // stove on: grid 36 A with the car at 16 A, car must drop to 9 A
   CHECK(shaper_ev_current_from_grid(29, 36, 16) == doctest::Approx(9));
+}
+
+// Entrance at 235 V, charger meter reading 2.5 V high, 0.25 ohm run
+static void feed(VoltageDropEstimator &e, double amps, int n, double grid = 235)
+{
+  for(int i = 0; i < n; i++) {
+    voltage_drop_add_sample(e, grid, grid + 2.5 - 0.25 * amps, amps);
+  }
+}
+
+TEST_CASE("voltage drop: offset at idle, then resistance while charging") {
+  VoltageDropEstimator e;
+  CHECK_FALSE(voltage_drop_has_offset(e));
+
+  feed(e, 0, 20);
+  REQUIRE(voltage_drop_has_offset(e));
+  CHECK(e.offset == doctest::Approx(-2.5));
+  CHECK_FALSE(voltage_drop_has_resistance(e));
+
+  // the first sample after the jump to 16 A is skipped
+  feed(e, 16, 10);
+  REQUIRE(voltage_drop_has_resistance(e));
+  CHECK(e.ohms == doctest::Approx(0.25));
+  CHECK(e.load == 9);
+  CHECK(voltage_drop_now(e, 235, 235 + 2.5 - 4) == doctest::Approx(4));
+}
+
+TEST_CASE("voltage drop: no resistance before the offset is known") {
+  VoltageDropEstimator e;
+  feed(e, 16, 30);
+  CHECK_FALSE(voltage_drop_has_resistance(e));
+  CHECK(e.load == 0);
+  // raw difference until then
+  CHECK(voltage_drop_now(e, 235, 233) == doctest::Approx(2));
+}
+
+TEST_CASE("voltage drop: skips ramps, partial loads and bad readings") {
+  VoltageDropEstimator e;
+  feed(e, 0, 20);
+  unsigned long idle = e.idle;
+  CHECK_FALSE(voltage_drop_add_sample(e, 235, 237, 3));   // jump: skipped
+  CHECK_FALSE(voltage_drop_add_sample(e, 235, 237, 3.2)); // between idle and load
+  CHECK_FALSE(voltage_drop_add_sample(e, 0, 237, 3.2));
+  CHECK_FALSE(voltage_drop_add_sample(e, 235, 180, 3.2)); // 55 V apart
+  CHECK_FALSE(voltage_drop_add_sample(e, NAN, 237, 3.2));
+  CHECK(e.idle == idle);
+  CHECK(e.load == 0);
+}
+
+TEST_CASE("voltage drop: averages the whole volt entrance readings") {
+  VoltageDropEstimator e;
+  feed(e, 0, 20);
+  feed(e, 16, 1);
+  // true drop 4 V: the entrance reads 235 or 236 around 235.5
+  for(int i = 0; i < 200; i++) {
+    double grid = (i % 2) ? 236 : 235;
+    voltage_drop_add_sample(e, grid, 235.5 + 2.5 - 4, 16);
+  }
+  CHECK(e.ohms == doctest::Approx(0.25).epsilon(0.03));
 }
