@@ -1,5 +1,5 @@
 from os.path import join, isfile, isdir, basename
-from os import listdir, system, environ
+from os import listdir, system, environ, remove
 from pprint import pprint
 import hashlib
 import pathlib
@@ -179,6 +179,17 @@ def make_safe(file):
 
     return file
 
+def remove_stale_headers(dest, prefix, out_files):
+    # Every GUI build names its assets by content hash, so the headers of the
+    # previous build stay behind in web_static: unused, but piling up in git.
+    # Keep only those of the files listed in this build.
+    keep = set(prefix+"."+make_safe(out_file)+".h" for out_file in out_files)
+    for path in sorted(glob.glob(join(dest, prefix+".*.h"))):
+        name = basename(path)
+        if name not in keep:
+            print("Removing stale {}".format(name))
+            remove(path)
+
 def make_static_web(env, target, source):
     return make_static(env, target, source, "web_server", dist_dir)
 
@@ -236,6 +247,8 @@ def make_static(env, target, source, prefix, files_dir):
     print("Generating {}".format(target_file))
     with open(target_file, "w") as output_file:
         output_file.write(output)
+
+    remove_stale_headers(pathlib.Path(target_file).parent.as_posix(), prefix, out_files)
 
 def process_html_app(source, dest, env, prefix, static_func):
     web_server_static_files = join(dest, prefix+"_static_files.h")
