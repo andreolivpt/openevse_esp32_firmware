@@ -257,6 +257,9 @@ uint32_t loadsharing_rotation_interval;
 // version that wrote them. A version change drops the lot - a firmware
 // update is a service event, where a power cut is not.
 String notification_acks;
+uint32_t fault_gfci_seen;
+uint32_t fault_noground_seen;
+uint32_t fault_stuck_seen;
 String notification_acks_fw;
 
 String esp_hostname_default = "openevse-"+ESPAL.getShortId();
@@ -546,6 +549,9 @@ ConfigOpt *opts[] =
 // update is a service event, where a power cut is not.
   new ConfigOptDefinition<String>(notification_acks, "", "notification_acks", "nak"),
   new ConfigOptDefinition<String>(notification_acks_fw, "", "notification_acks_fw", "nkv"),
+  new ConfigOptDefinition<uint32_t>(fault_gfci_seen, 0, "fault_gfci_seen", "fgs"),
+  new ConfigOptDefinition<uint32_t>(fault_noground_seen, 0, "fault_noground_seen", "fns"),
+  new ConfigOptDefinition<uint32_t>(fault_stuck_seen, 0, "fault_stuck_seen", "fss"),
 
 // Scheduler options
   new ConfigOptDefinition<uint32_t>(scheduler_start_window, SCHEDULER_DEFAULT_START_WINDOW, "scheduler_start_window", "ssw"),

@@ -48,7 +48,8 @@ struct NotificationInputs {
   bool     vent_check;
   bool     temp_check;
 
-  // Latched fault counters from $GF.
+  // Latched fault counters from $GF, less what the user has marked as seen
+  // (notification_fault_count_new()): only trips after that raise anything.
   uint32_t gfci_count;
   uint32_t no_ground_count;
   uint32_t stuck_relay_count;
@@ -92,5 +93,15 @@ uint8_t notifications_max_severity(const Notification *list, size_t count);
 // Index of the advisory the LCD should name: highest severity, earliest in
 // table order among equals. -1 when count is 0.
 int notifications_worst(const Notification *list, size_t count);
+
+// Trips recorded since the user marked the counter as seen. The controller
+// counters can only be cleared on D9 firmware ($FC); elsewhere they only grow,
+// so the seen value is what turns a historical count into "nothing new". A
+// count below the seen value means the counters were cleared since: every
+// trip is new again.
+inline uint32_t notification_fault_count_new(uint32_t count, uint32_t seen)
+{
+  return count >= seen ? count - seen : count;
+}
 
 #endif // _OPENEVSE_NOTIFICATIONS_RULES_H

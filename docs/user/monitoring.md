@@ -12,7 +12,9 @@ Live metrics from the charger, grouped into five tabs.
   for the underlying log).
 - **Safety** — the protection counters: GFCI trips, no-ground events, stuck
   relay detections. Rising counters are worth investigating — see
-  [Safety](safety.md).
+  [Safety](safety.md). Counts marked as seen on the Health tab show as
+  history; only trips after that show as errors and raise a
+  [notification](notifications.md).
 - **Manager** — the claims currently registered on the charger (which
   subsystem is controlling state and current, at what priority) and service
   connection status. Invaluable for answering "*why* is it (not) charging?"

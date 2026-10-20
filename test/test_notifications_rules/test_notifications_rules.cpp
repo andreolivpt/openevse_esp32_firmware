@@ -294,3 +294,12 @@ TEST_CASE("every id and storage key is unique") {
     }
   }
 }
+
+TEST_CASE("fault counts marked as seen only raise new trips") {
+  CHECK(notification_fault_count_new(33, 0) == 33);
+  CHECK(notification_fault_count_new(33, 33) == 0);
+  CHECK(notification_fault_count_new(34, 33) == 1);
+  // counters cleared on the controller since: every trip is new again
+  CHECK(notification_fault_count_new(1, 33) == 1);
+  CHECK(notification_fault_count_new(0, 33) == 0);
+}

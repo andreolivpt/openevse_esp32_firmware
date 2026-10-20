@@ -164,6 +164,10 @@ extern uint32_t loadsharing_rotation_interval;
 
 // Advisory acknowledgements (internal state, not a /config setting)
 extern String notification_acks;
+// Fault counter values marked as seen: only trips beyond them raise a notification
+extern uint32_t fault_gfci_seen;
+extern uint32_t fault_noground_seen;
+extern uint32_t fault_stuck_seen;
 extern String notification_acks_fw;
 
 //Shaper settings

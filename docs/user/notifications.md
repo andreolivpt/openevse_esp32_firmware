@@ -52,6 +52,13 @@ charger's configuration a secret.
 It stays dismissed until the underlying number moves — so a later GFCI trip
 raises it again by itself, with no action from you.
 
+The fault counters live in the controller and, except on D9 controller
+firmware, cannot be cleared. **Mark as seen** on the Health tab
+(`#/monitoring/health`) records the current counts (`fault_gfci_seen`,
+`fault_noground_seen`, `fault_stuck_seen` in `/config`); from then on only
+trips beyond them raise a notification, and the counters show as history
+rather than as an error. Unlike a dismissal, this survives firmware updates.
+
 Acknowledgements survive a restart. They are deliberately cleared again by
 anything that changes the meaning of the notification: changing the setting it
 was about, the counter moving, or updating the firmware. An acknowledgement you

@@ -71,9 +71,10 @@ void Notifications::gather(NotificationInputs &in)
   in.vent_check   = _evse->isVentRequiredEnabled();
   in.temp_check   = _evse->isTemperatureCheckEnabled();
 
-  in.gfci_count        = (uint32_t)_evse->getFaultCountGFCI();
-  in.no_ground_count   = (uint32_t)_evse->getFaultCountNoGround();
-  in.stuck_relay_count = (uint32_t)_evse->getFaultCountStuckRelay();
+  // Only trips since the counters were marked as seen (fault_*_seen)
+  in.gfci_count        = notification_fault_count_new((uint32_t)_evse->getFaultCountGFCI(), fault_gfci_seen);
+  in.no_ground_count   = notification_fault_count_new((uint32_t)_evse->getFaultCountNoGround(), fault_noground_seen);
+  in.stuck_relay_count = notification_fault_count_new((uint32_t)_evse->getFaultCountStuckRelay(), fault_stuck_seen);
 
   in.temp_throttling = tempThrottle.isThrottling();
   in.temp_valid   = false;
